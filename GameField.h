@@ -49,7 +49,7 @@ public:
     TerrainProxy getTerrainProxy(int x, int y);
 
     void addObject(int x, int y, std::unique_ptr<NeutralObject> obj);
-    NeutralObject* getObjectAt(int x, int y) const; // <--- ДОБАВЛЕН const
+    NeutralObject* getObjectAt(int x, int y) const;
     void removeObject(int x, int y);
 
     class GameFieldIterator {

@@ -164,16 +164,16 @@ void scenario23() {
     Unit* hero = myBase.getUnit(0);
 
     TreasureChest chest;
-    *hero + chest;
+    *hero + chest;      // GoldRewardStrategy
 
     Trap trap;
-    *hero - trap;
+    *hero - trap;       // DamageStrategy
 
     Altar altar;
-    *hero* altar;
+    *hero* altar;      // AttackBoostStrategy
 
     EnergySource source;
-    *hero / source;
+    *hero / source;     // HealthRestoreStrategy
 }
 
 void scenario24() {
@@ -313,6 +313,7 @@ void runFreePlay() {
                 NeutralObject* obj = field.getObjectAt(nx, ny);
                 if (obj) {
                     if (Altar* altar = dynamic_cast<Altar*>(obj)) {
+                        // Спец-эффект free play: x2 урон юнитам в 3x3
                         for (std::size_t i = 0; i < field.size(); ++i) {
                             Unit* other = field.getUnit(i);
                             if (std::abs(other->getX() - nx) <= 1 && std::abs(other->getY() - ny) <= 1) {
@@ -320,6 +321,8 @@ void runFreePlay() {
                             }
                         }
                         std::cout << "Altar activated! Units in 3x3 get x2 damage.\n";
+                        // Плюс общий эффект через стратегию (AttackBoostStrategy)
+                        altar->interact(*u);
                     }
                     else {
                         obj->interact(*u);

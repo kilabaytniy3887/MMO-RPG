@@ -15,7 +15,7 @@ protected:
     int tempDamageBoost;
     int dmgMult;
     int gold;
-    int speed;       // Скорость юнита
+    int speed;
     Base* ownerBase;
 
 public:
@@ -66,7 +66,7 @@ public:
     virtual Unit* clone() const = 0;
 };
 
-// --- Иерархия: Damage ---
+
 class Damage : public Unit {
 public:
     Damage(int id, int x, int y, int hp, int arm, int atk);
@@ -86,7 +86,7 @@ public:
     Unit* clone() const override { return new Berserk(*this); }
 };
 
-// --- Иерархия: Tank ---
+
 class Tank : public Unit {
 public:
     Tank(int id, int x, int y, int hp, int arm, int atk);
@@ -106,7 +106,6 @@ public:
     Unit* clone() const override { return new Vampir(*this); }
 };
 
-// --- Иерархия: Flying ---
 class Flying : public Unit {
 public:
     Flying(int id, int x, int y, int hp, int arm, int atk);

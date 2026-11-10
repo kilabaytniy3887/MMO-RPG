@@ -23,7 +23,6 @@ public:
 class Forest : public Terrain {
 public:
     bool isPassable(const Unit& unit) const override {
-        // Тяжёлые танки не проходят через лес
         if (unit.getType() == "Paladin" || unit.getType() == "Vampir") return false;
         return true;
     }
@@ -38,7 +37,6 @@ public:
 class Mountains : public Terrain {
 public:
     bool isPassable(const Unit& unit) const override {
-        // По горам могут ходить только те, у кого скорость 2 и более
         return unit.getSpeed() >= 2;
     }
     double getSpeedModifier(const Unit&) const override { return 0.5; }
@@ -49,10 +47,9 @@ public:
 class Swamp : public Terrain {
 public:
     bool isPassable(const Unit& unit) const override {
-        // По болоту могут ходить все, у кого скорость 1 и более
         return unit.getSpeed() >= 1;
     }
-    double getSpeedModifier(const Unit&) const override { return 0.5; } // Болото понижает скорость до x0.5
+    double getSpeedModifier(const Unit&) const override { return 0.5; }
     double getDefenseBonus(const Unit&) const override { return -0.1; }
     std::string getName() const override { return "Swamp"; }
 };

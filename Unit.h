@@ -1,106 +1,127 @@
 #pragma once
 #include <string>
 #include "Attributes.h"
+#include "Observer.h"
 
-class DamageFactory;
-class TankFactory;
-class FlyingFactory;
+class Base;
 
-class Unit {
+class Unit : public IObservable {
 protected:
+    int id;
     int x, y;
     Health health;
     Armor armor;
     Attack attack;
-
-    Unit(int x, int y, int hp, int arm, int atk);
+    int tempDamageBoost;
+    int dmgMult;
+    int gold;
+    int speed;       // Скорость юнита
+    Base* ownerBase;
 
 public:
+    Unit(int id, int x, int y, int hp, int arm, int atk);
+
     virtual ~Unit() = default;
 
+    int getId() const { return id; }
     int getX() const { return x; }
     int getY() const { return y; }
+    Health& getHealth() { return health; }
     const Health& getHealth() const { return health; }
-    const Armor& getArmor()  const { return armor; }
-    const Attack& getAttack() const { return attack; }
+
+    int getSpeed() const { return speed; }
+
+    int getAttack() const { return (attack.getValue() + tempDamageBoost) * dmgMult; }
+
+    void setTempDamageBoost(int b) { tempDamageBoost += b; }
+    void setBase(Base* b) { ownerBase = b; }
+    Base* getBase() const { return ownerBase; }
+
+    int getGold() const { return gold; }
+    void addGold(int amount) { gold += amount; }
+    void spendGold(int amount) { if (gold >= amount) gold -= amount; }
+    int getDamageMultiplier() const { return dmgMult; }
+    void setDamageMultiplier(int mult) { dmgMult = mult; }
 
     void move(int newX, int newY) { x = newX; y = newY; }
 
+    void takeDamage(int dmg) {
+        int finalDmg = armor.reduceDamage(dmg);
+        health.decrease(finalDmg);
+        notify({ EventType::Damaged, id, "Unit damaged" });
+        if (health.isZero()) {
+            notify({ EventType::Destroyed, id, "Unit destroyed" });
+        }
+    }
+
+    void heal(int amount) { health.increase(amount); }
+
     int attackUnit(Unit& target) {
-        int damage = attack.calculateDamage(target.getArmor());
-        target.health.decrease(damage);
-        return damage;
+        int rawDamage = getAttack();
+        target.takeDamage(rawDamage);
+        return rawDamage;
     }
 
     virtual std::string getType() const = 0;
     virtual Unit* clone() const = 0;
 };
 
+// --- Иерархия: Damage ---
 class Damage : public Unit {
-protected:
-    Damage(int x, int y, int hp, int arm, int atk) : Unit(x, y, hp, arm, atk) {}
+public:
+    Damage(int id, int x, int y, int hp, int arm, int atk);
 };
 
 class Mage : public Damage {
-private:
-    Mage(int x, int y) : Damage(x, y, 100, 10, 20) {}
 public:
-    friend class DamageFactory;
+    Mage(int id, int x, int y);
     std::string getType() const override { return "Mage"; }
     Unit* clone() const override { return new Mage(*this); }
 };
 
 class Berserk : public Damage {
-private:
-    Berserk(int x, int y) : Damage(x, y, 80, 15, 15) {}
 public:
-    friend class DamageFactory;
+    Berserk(int id, int x, int y);
     std::string getType() const override { return "Berserk"; }
     Unit* clone() const override { return new Berserk(*this); }
 };
 
+// --- Иерархия: Tank ---
 class Tank : public Unit {
-protected:
-    Tank(int x, int y, int hp, int arm, int atk) : Unit(x, y, hp, arm, atk) {}
+public:
+    Tank(int id, int x, int y, int hp, int arm, int atk);
 };
 
 class Paladin : public Tank {
-private:
-    Paladin(int x, int y) : Tank(x, y, 60, 5, 25) {}
 public:
-    friend class TankFactory;
+    Paladin(int id, int x, int y);
     std::string getType() const override { return "Paladin"; }
     Unit* clone() const override { return new Paladin(*this); }
 };
 
 class Vampir : public Tank {
-private:
-    Vampir(int x, int y) : Tank(x, y, 90, 10, 20) {}
 public:
-    friend class TankFactory;
+    Vampir(int id, int x, int y);
     std::string getType() const override { return "Vampir"; }
     Unit* clone() const override { return new Vampir(*this); }
 };
 
+// --- Иерархия: Flying ---
 class Flying : public Unit {
-protected:
-    Flying(int x, int y, int hp, int arm, int atk) : Unit(x, y, hp, arm, atk) {}
+public:
+    Flying(int id, int x, int y, int hp, int arm, int atk);
 };
 
 class Pegas : public Flying {
-private:
-    Pegas(int x, int y) : Flying(x, y, 120, 20, 30) {}
 public:
-    friend class FlyingFactory;
+    Pegas(int id, int x, int y);
     std::string getType() const override { return "Pegas"; }
     Unit* clone() const override { return new Pegas(*this); }
 };
 
 class DarkKnight : public Flying {
-private:
-    DarkKnight(int x, int y) : Flying(x, y, 80, 10, 25) {}
 public:
-    friend class FlyingFactory;
+    DarkKnight(int id, int x, int y);
     std::string getType() const override { return "Dark Knight"; }
     Unit* clone() const override { return new DarkKnight(*this); }
 };

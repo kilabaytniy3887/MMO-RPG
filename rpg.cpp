@@ -3,10 +3,16 @@
 #include <ctime>
 #include <windows.h>
 #include <cmath>
+#include <memory>
+#include <string>
+#include <limits>
 #include "GameField.h"
 #include "Base.h"
 #include "UnitFactory.h"
-
+#include "ScenariosLab1.h"
+#include "ScenariosLab2.h"
+#include "ScenariosLab3.h"
+#include "GameFacade.h" 
 
 void clearScreen() {
     std::cout << "\033[2J\033[1;1H" << std::flush;
@@ -18,203 +24,55 @@ void waitForEnter() {
     std::cin.get();
 }
 
-int findUnitIndexById(const GameField& field, int id) {
-    for (std::size_t i = 0; i < field.size(); ++i) {
-        if (field.getUnit(i)->getId() == id) return static_cast<int>(i);
-    }
-    return -1;
-}
-
-
-void scenario11() {
-    std::cout << "\n Scenario 1.1: Creating field and populating via factories \n";
-
-    GameField field(10, 10, 5);
-    DamageFactory dmgFactory;
-    TankFactory   tankFactory;
-    FlyingFactory flyFactory;
-
-    int nextId = 1;
-    field.populateField(dmgFactory, "Mage", nextId++, 1, 1);
-    field.populateField(tankFactory, "Paladin", nextId++, 4, 2);
-    field.populateField(flyFactory, "Pegas", nextId++, 7, 4);
-    field.populateField(dmgFactory, "Berserk", nextId++, 2, 5);
-
-    std::cout << "\nUnits on field: " << field.size() << "\n";
-    std::cout << "Field visualization:\n";
-    field.printField();
-}
-
-void scenario12() {
-    std::cout << "\n Scenario 1.2: Deep copy of the field \n";
-
-    GameField field(10, 10, 5);
-    DamageFactory dmgFactory;
-    TankFactory   tankFactory;
-    FlyingFactory flyFactory;
-
-    int nextId = 1;
-    field.populateField(dmgFactory, "Mage", nextId++, 1, 1);
-    field.populateField(tankFactory, "Paladin", nextId++, 4, 2);
-    field.populateField(flyFactory, "Pegas", nextId++, 7, 4);
-
-    GameField copyField = field;
-
-    field.getUnit(0)->move(5, 5);
-
-    std::cout << "First unit coords in original: ("
-        << field.getUnit(0)->getX() << ", " << field.getUnit(0)->getY() << ")\n";
-    std::cout << "First unit coords in copy: ("
-        << copyField.getUnit(0)->getX() << ", " << copyField.getUnit(0)->getY() << ")\n";
-}
-
-void scenario13() {
-    std::cout << "\n Scenario 1.3: Iteration over the field \n";
-
-    GameField field(10, 10, 5);
-    DamageFactory dmgFactory;
-    TankFactory   tankFactory;
-    FlyingFactory flyFactory;
-
-    int nextId = 1;
-    field.populateField(dmgFactory, "Mage", nextId++, 1, 1);
-    field.populateField(tankFactory, "Paladin", nextId++, 4, 2);
-    field.populateField(flyFactory, "Pegas", nextId++, 7, 4);
-    field.populateField(dmgFactory, "Berserk", nextId++, 2, 5);
-
-    for (auto it = field.begin(); it != field.end(); ++it) {
-        Unit* u = *it;
-        std::cout << "Found unit: " << u->getType()
-            << " at position (" << u->getX() << ", " << u->getY() << ")\n";
-    }
-}
-
-
-void scenario21() {
-    std::cout << "\n Scenario 2.1: Base and Units creation (Observer) \n";
-
-    AllUnitsFactory factory;
-    Base myBase(5, 5, 1000, 5, 10, 500, &factory);
-
-    myBase.createUnit("Mage", 1, 1);
-    myBase.createUnit("Paladin", 2, 2);
-}
-
-void scenario22() {
-    std::cout << "\n Scenario 2.2: Movement and Proxy \n";
-
-    AllUnitsFactory factory;
-    Base myBase(5, 5, 1000, 5, 10, 500, &factory);
-    myBase.createUnit("Mage", 1, 1);
-
-    GameField newField;
-    newField.initTerrain(10, 10);
-
-    srand(42);
-    for (int y = 0; y < 10; ++y) {
-        for (int x = 0; x < 10; ++x) {
-            int r = rand() % 100;
-            if (y == 1 && x >= 0 && x <= 5) {
-                newField.setTerrain(x, y, std::make_shared<Plains>());
-                continue;
-            }
-            if (r < 25)      newField.setTerrain(x, y, std::make_shared<Forest>());
-            else if (r < 40) newField.setTerrain(x, y, std::make_shared<Mountains>());
-            else if (r < 55) newField.setTerrain(x, y, std::make_shared<Swamp>());
-            else             newField.setTerrain(x, y, std::make_shared<Plains>());
-        }
-    }
-    newField.setTerrain(3, 1, std::make_shared<Forest>());
-    newField.setTerrain(4, 1, std::make_shared<Mountains>());
-
-    Unit* hero = myBase.getUnit(0);
-    std::string heroType = hero->getType();
-
-    std::cout << "\nInitial map:\n";
-    newField.printMap(hero->getX(), hero->getY(), heroType);
-
-    std::cout << "\nHero starts moving from (1, 1) to the right...\n";
-    for (int step = 1; step <= 4; ++step) {
-        int newX = hero->getX() + 1;
-        int newY = hero->getY();
-        std::cout << "\nStep " << step << ". Target: (" << newX << ", " << newY << ").\n";
-
-        TerrainProxy proxy = newField.getTerrainProxy(newX, newY);
-        if (proxy.isPassable(*hero)) {
-            proxy.getSpeedModifier(*hero);
-            hero->move(newX, newY);
-            std::cout << "Success! Hero is now at ("
-                << hero->getX() << ", " << hero->getY() << ").\n";
-            newField.printMap(hero->getX(), hero->getY(), heroType);
-        }
-        else {
-            std::cout << "Path is blocked! Hero stays in place.\n";
-            break;
-        }
-    }
-}
-
-void scenario23() {
-    std::cout << "\n Scenario 2.3: Interaction with objects (Overload) \n";
-
-    AllUnitsFactory factory;
-    Base myBase(5, 5, 1000, 5, 10, 500, &factory);
-    myBase.createUnit("Mage", 1, 1);
-
-    Unit* hero = myBase.getUnit(0);
-
-    TreasureChest chest;
-    *hero + chest;      // GoldRewardStrategy
-
-    Trap trap;
-    *hero - trap;       // DamageStrategy
-
-    Altar altar;
-    *hero* altar;      // AttackBoostStrategy
-
-    EnergySource source;
-    *hero / source;     // HealthRestoreStrategy
-}
-
-void scenario24() {
-    std::cout << "\n Scenario 2.4: Unit destruction and Observer \n";
-
-    AllUnitsFactory factory;
-    Base myBase(5, 5, 1000, 5, 10, 500, &factory);
-    myBase.createUnit("Paladin", 1, 1);
-
-    Unit* hero = myBase.getUnit(0);
-    std::cout << "Dealing lethal damage to Hero...\n";
-    hero->takeDamage(9999);
-}
-
-
 void runFreePlay() {
     clearScreen();
-    std::cout << "\n FREE PLAY MODE \n";
-    std::cout << "--- Map Setup ---\n";
+    std::cout << "\n=== FREE PLAY MODE (Lab 3 Architecture) ===\n";
 
-    int w = 10, h = 10;
-    bool validInput = false;
+    int w = 20, h = 20;
+    int baseX = 2, baseY = 2;
 
-    do {
-        std::cout << "Enter map width (10..50): ";
-        if (!(std::cin >> w) || w < 10 || w > 50) {
-            std::cin.clear(); std::cin.ignore(10000, '\n');
-            std::cout << "Invalid width. Try again.\n";
-        }
-        else validInput = true;
-    } while (!validInput);
+    int testChoice = 0;
+    std::cout << "Use test map configuration? (20x20, base at 2 2)\n";
+    std::cout << "1. Yes\n";
+    std::cout << "0. No (custom setup)\n";
+    std::cout << "Choice: ";
+    std::cin >> testChoice;
 
-    validInput = false;
-    do {
-        std::cout << "Enter map height (10..50): ";
-        if (!(std::cin >> h) || h < 10 || h > 50) {
-            std::cin.clear(); std::cin.ignore(10000, '\n');
-            std::cout << "Invalid height. Try again.\n";
-        }
-        else validInput = true;
-    } while (!validInput);
+    if (testChoice == 1) {
+        std::cout << "\nTest map selected: 20x20, base at (2, 2).\n";
+        std::cout << "Press Enter to continue...";
+        std::cin.ignore(10000, '\n'); std::cin.get();
+    }
+    else {
+        bool validInput = false;
+        do {
+            std::cout << "Enter map width (10..50): ";
+            if (!(std::cin >> w) || w < 10 || w > 50) {
+                std::cin.clear(); std::cin.ignore(10000, '\n');
+            }
+            else validInput = true;
+        } while (!validInput);
+
+        validInput = false;
+        do {
+            std::cout << "Enter map height (10..50): ";
+            if (!(std::cin >> h) || h < 10 || h > 50) {
+                std::cin.clear(); std::cin.ignore(10000, '\n');
+            }
+            else validInput = true;
+        } while (!validInput);
+
+        validInput = false;
+        do {
+            std::cout << "Choose base position (X Y), X in [2.." << (w - 3) << "], Y in [2.." << (h - 3) << "]: ";
+            if (!(std::cin >> baseX >> baseY)) {
+                std::cin.clear(); std::cin.ignore(10000, '\n');
+                continue;
+            }
+            if (baseX < 2 || baseX > w - 3 || baseY < 2 || baseY > h - 3) continue;
+            validInput = true;
+        } while (!validInput);
+    }
 
     AllUnitsFactory factory;
     GameField field(w, h, 50);
@@ -227,7 +85,6 @@ void runFreePlay() {
             else if (r < 25) field.setTerrain(x, y, std::make_shared<Mountains>());
             else if (r < 35) field.setTerrain(x, y, std::make_shared<Swamp>());
 
-
             int objChance = rand() % 100;
             if (objChance < 3)       field.addObject(x, y, std::make_unique<Altar>());
             else if (objChance < 6)  field.addObject(x, y, std::make_unique<EnergySource>());
@@ -236,195 +93,273 @@ void runFreePlay() {
         }
     }
 
-    int nextId = 1;
-    int action = -1;
-
-    while (action != 0) {
-        clearScreen();
-        field.printMap();
-
-        std::cout << "\n--- FREE PLAY MENU ---\n";
-        std::cout << "1. Add unit\n";
-        std::cout << "2. Move unit (WASD)\n";
-        std::cout << "3. Attack\n";
-        std::cout << "4. List units\n";
-        std::cout << "5. Show map\n";
-        std::cout << "6. Build Base (1000 gold)\n";
-        std::cout << "0. Back to main menu\n";
-        std::cout << "Choice: ";
-        std::cin >> action;
-
-        if (std::cin.fail()) {
-            std::cin.clear(); std::cin.ignore(10000, '\n');
-            action = -1; continue;
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            int nx = baseX + dx, ny = baseY + dy;
+            if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+            field.setTerrain(nx, ny, std::make_shared<Plains>());
+            field.removeObject(nx, ny);
         }
+    }
 
-        switch (action) {
+    std::unique_ptr<Base> playerBase(new Base(baseX, baseY, 5000, 20, 10, 1500, 800, 1200, &factory));
+    field.addObject(baseX, baseY, std::make_unique<Castle>());
+
+    GameFacade facade(playerBase.get(), &field, &factory);
+
+    int mainChoice = -1;
+    while (mainChoice != 0) {
+        clearScreen();
+        facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+
+        std::cout << "\n----------------------------------------\n";
+        std::cout << "TURN: " << facade.getCurrentTurn() << " | Base at (" << playerBase->getX() << "," << playerBase->getY() << ")\n";
+        std::cout << "=== FREE PLAY MENU ===\n";
+        std::cout << "1. Unit Management\n";
+        std::cout << "2. Base Management\n";
+        std::cout << "3. View Game State\n";
+        std::cout << "4. End Turn (Next Turn)\n";
+        std::cout << "0. Exit to main menu\nChoice: ";
+
+        if (!(std::cin >> mainChoice)) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
+        if (mainChoice == 0) break;
+
+        switch (mainChoice) {
         case 1: {
-            int typeChoice;
-            std::cout << "\n--- Select unit type ---\n";
-            std::cout << "1. Mage\n2. Berserk\n3. Paladin\n4. Vampir\n5. Pegas\n6. Dark Knight\n0. Cancel\nChoice: ";
-            std::cin >> typeChoice;
+            int subChoice = -1;
+            while (subChoice != 0) {
+                clearScreen();
+                facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+                std::cout << "\n----------------------------------------\n";
+                std::cout << "=== UNIT MANAGEMENT (Turn " << facade.getCurrentTurn() << ") ===\n";
+                std::cout << "1. Create unit\n2. Move unit\n3. Attack\n4. Gather resource\n5. Heal unit\n6. Check all units\n0. Back\nChoice: ";
+                std::cin >> subChoice;
+                if (subChoice == 0) break;
 
-            if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); break; }
+                std::string cmd = "", type; int id1, id2, x, y;
+                switch (subChoice) {
+                case 1: {
+                    int typeChoice;
+                    std::cout << "\n--- Select unit type ---\n";
+                    std::cout << "1. Mage\n2. Berserk\n3. Paladin\n4. Vampir\n5. Pegas\n6. Dark Knight\n";
+                    std::cout << "7. Archangel (Requires Lab Lvl 4)\n8. Titan (Requires Lab Lvl 5)\n";
+                    std::cout << "9. Kobold (3x Ore)\n10. Beaver Mutant (3x Wood)\n";
+                    std::cout << "0. Cancel\nChoice: ";
+                    std::cin >> typeChoice;
 
-            std::string type;
-            switch (typeChoice) {
-            case 1: type = "Mage"; break;
-            case 2: type = "Berserk"; break;
-            case 3: type = "Paladin"; break;
-            case 4: type = "Vampir"; break;
-            case 5: type = "Pegas"; break;
-            case 6: type = "Dark Knight"; break;
+                    switch (typeChoice) {
+                    case 1: type = "Mage"; break;
+                    case 2: type = "Berserk"; break;
+                    case 3: type = "Paladin"; break;
+                    case 4: type = "Vampir"; break;
+                    case 5: type = "Pegas"; break;
+                    case 6: type = "DarkKnight"; break;
+                    case 7: type = "Archangel"; break;
+                    case 8: type = "Titan"; break;
+                    case 9: type = "Kobold"; break;
+                    case 10: type = "BeaverMutant"; break;
+                    case 0: break;
+                    default: break;
+                    }
+                    if (type.empty()) break;
+
+                    std::cout << "X Y (Must be near Barracks or Base): "; std::cin >> x >> y;
+                    cmd = "produce " + type + " " + std::to_string(x) + " " + std::to_string(y);
+                    break;
+                }
+                case 2: {
+                    std::cout << "Unit ID: "; std::cin >> id1;
+
+                    int cx = facade.getUnitX(id1);
+                    int cy = facade.getUnitY(id1);
+                    if (cx == -1) {
+                        std::cout << "Unit not found!\n";
+                        waitForEnter();
+                        break;
+                    }
+
+                    bool moving = true;
+                    while (moving) {
+                        clearScreen();
+                        facade.printMap(cx, cy, "Unit");
+                        std::cout << "\n----------------------------------------\n";
+                        std::cout << "=== MOVING UNIT " << id1 << " ===\n";
+                        std::cout << "Position: (" << cx << ", " << cy << ") | Moves left: "
+                            << facade.getUnitMovesLeft(id1) << "/" << facade.getUnitMaxMoves(id1) << "\n";
+                        std::cout << "Use W/A/S/D to move, Q to stop.\n";
+                        std::cout << "Direction: ";
+
+                        char dir;
+                        std::cin >> dir;
+                        if (dir == 'q' || dir == 'Q' || dir == '0') {
+                            moving = false;
+                            break;
+                        }
+
+                        if (facade.getUnitMovesLeft(id1) <= 0) {
+                            std::cout << "\nNo movement points left for this unit! Press Q to go back or End Turn.\n";
+                            waitForEnter();
+                            continue;
+                        }
+
+                        int nx = cx, ny = cy;
+                        if (dir == 'w' || dir == 'W') --ny;
+                        else if (dir == 's' || dir == 'S') ++ny;
+                        else if (dir == 'a' || dir == 'A') --nx;
+                        else if (dir == 'd' || dir == 'D') ++nx;
+                        else continue;
+
+                        std::string moveCmd = "move " + std::to_string(id1) + " " + std::to_string(nx) + " " + std::to_string(ny);
+                        facade.executeUserInput(moveCmd);
+
+                        cx = facade.getUnitX(id1);
+                        cy = facade.getUnitY(id1);
+
+                        if (facade.getUnitMovesLeft(id1) <= 0) {
+                            std::cout << "Unit spent all movement points for this turn.\n";
+                            waitForEnter();
+                            moving = false;
+                        }
+                    }
+                    break;
+                }
+                case 3:
+                    int targetType;
+                    std::cout << "Attacker Unit ID: "; std::cin >> id1;
+                    std::cout << "Select target type (1. Unit, 2. Building): "; std::cin >> targetType;
+                    if (targetType == 1) {
+                        std::cout << "Defender Unit ID: "; std::cin >> id2;
+                        cmd = "attack " + std::to_string(id1) + " " + std::to_string(id2);
+                    }
+                    else if (targetType == 2) {
+                        std::cout << "Target Building ID: "; std::cin >> id2;
+                        cmd = "attack_building " + std::to_string(id1) + " " + std::to_string(id2);
+                    }
+                    break;
+                case 4:
+                    std::cout << "Unit ID: "; std::cin >> id1;
+                    cmd = "gather " + std::to_string(id1);
+                    break;
+                case 5:
+                    std::cout << "Unit ID: "; std::cin >> id1;
+                    cmd = "heal " + std::to_string(id1);
+                    break;
+                case 6:
+                    cmd = "status";
+                    break;
+}
+
+if (!cmd.empty()) {
+    facade.executeUserInput(cmd);
+    waitForEnter();
+}
+}
+break;
+}
+case 2: {
+    int subChoice = -1;
+    while (subChoice != 0) {
+        clearScreen();
+        facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+        std::cout << "\n----------------------------------------\n";
+        std::cout << "=== BASE MANAGEMENT (Turn " << facade.getCurrentTurn() << ") ===\n";
+        std::cout << "1. Build building\n2. Research technology (Requires Lab)\n3. Distribute resources\n4. View Base Stats\n0. Back\nChoice: ";
+        std::cin >> subChoice;
+        if (subChoice == 0) break;
+
+        std::string cmd = "", type; int x, y, amt;
+        switch (subChoice) {
+        case 1: {
+            int bTypeChoice;
+            std::cout << "\n--- Select building type ---\n";
+            std::cout << "1. Barracks (100 Wood, 50 Metal)\n";
+            std::cout << "2. Hospital (150 Wood, 100 Metal)\n";
+            std::cout << "3. Lab (200 Wood, 150 Metal)\n";
+            std::cout << "4. PowerPlant (250 Wood, 200 Metal)\n";
+            std::cout << "5. Warehouse (120 Wood, 80 Metal)\n";
+            std::cout << "0. Cancel\nChoice: ";
+            std::cin >> bTypeChoice;
+            switch (bTypeChoice) {
+            case 1: type = "Barracks"; break;
+            case 2: type = "Hospital"; break;
+            case 3: type = "Lab"; break;
+            case 4: type = "PowerPlant"; break;
+            case 5: type = "Warehouse"; break;
             case 0: break;
-            default: break;
             }
             if (type.empty()) break;
-
-            int x, y;
-            std::cout << "X and Y: "; std::cin >> x >> y;
-            if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); break; }
-
-            field.populateField(factory, type, nextId++, x, y);
+            std::cout << "X Y (Must be a free cell): "; std::cin >> x >> y;
+            cmd = "build " + type + " " + std::to_string(x) + " " + std::to_string(y);
             break;
         }
         case 2: {
-            if (field.empty()) { break; }
-            int id;
-            std::cout << "Unit ID: "; std::cin >> id;
-            int idx = findUnitIndexById(field, id);
-            if (idx == -1) { std::cout << "Invalid ID!\n"; break; }
-
-            Unit* u = field.getUnit(idx);
-            char dir;
-            std::cout << "Direction (W/A/S/D): "; std::cin >> dir;
-            int nx = u->getX(), ny = u->getY();
-            if (dir == 'w' || dir == 'W') --ny;
-            else if (dir == 's' || dir == 'S') ++ny;
-            else if (dir == 'a' || dir == 'A') --nx;
-            else if (dir == 'd' || dir == 'D') ++nx;
-
-            if (nx < 0 || nx >= field.getWidth() || ny < 0 || ny >= field.getHeight()) break;
-
-            TerrainProxy proxy = field.getTerrainProxy(nx, ny);
-            if (!proxy.isPassable(*u)) break;
-
-            if (field.moveUnit(idx, nx, ny)) {
-                NeutralObject* obj = field.getObjectAt(nx, ny);
-                if (obj) {
-                    if (Altar* altar = dynamic_cast<Altar*>(obj)) {
-                        // Спец-эффект free play: x2 урон юнитам в 3x3
-                        for (std::size_t i = 0; i < field.size(); ++i) {
-                            Unit* other = field.getUnit(i);
-                            if (std::abs(other->getX() - nx) <= 1 && std::abs(other->getY() - ny) <= 1) {
-                                other->setDamageMultiplier(2);
-                            }
-                        }
-                        std::cout << "Altar activated! Units in 3x3 get x2 damage.\n";
-                        // Плюс общий эффект через стратегию (AttackBoostStrategy)
-                        altar->interact(*u);
-                    }
-                    else {
-                        obj->interact(*u);
-                        if (dynamic_cast<Trap*>(obj) || dynamic_cast<TreasureChest*>(obj)) {
-                            field.removeObject(nx, ny);
-                        }
-                    }
-                }
+            int rTypeChoice;
+            std::cout << "\n--- Select research (Takes 2 turns) ---\n";
+            std::cout << "1. Armor Up (+20 Armor, Lab Lvl 1)\n";
+            std::cout << "2. Damage Up (+30 Damage, Lab Lvl 2)\n";
+            std::cout << "3. Speed Up (+1 Speed, Lab Lvl 3)\n";
+            std::cout << "0. Cancel\nChoice: ";
+            std::cin >> rTypeChoice;
+            switch (rTypeChoice) {
+            case 1: type = "ArmorUp"; break;
+            case 2: type = "DamageUp"; break;
+            case 3: type = "SpeedUp"; break;
+            case 0: break;
             }
+            if (type.empty()) break;
+            cmd = "research " + type;
             break;
         }
         case 3: {
-            if (field.empty()) { break; }
-            int a_id, d_id;
-            std::cout << "Attacker ID: "; std::cin >> a_id;
-            std::cout << "Defender ID: "; std::cin >> d_id;
-
-            int a_idx = findUnitIndexById(field, a_id);
-            int d_idx = findUnitIndexById(field, d_id);
-
-            if (a_idx == -1 || d_idx == -1 || a_idx == d_idx) break;
-
-            Unit* atk = field.getUnit(a_idx);
-            Unit* def = field.getUnit(d_idx);
-
-            int dx = std::abs(atk->getX() - def->getX());
-            int dy = std::abs(atk->getY() - def->getY());
-            if (dx + dy != 1) break;
-
-            atk->attackUnit(*def);
-            if (def->getHealth().isZero()) {
-                field.removeUnit(d_idx);
+            int distChoice;
+            std::cout << "\n--- Distribute resources ---\n";
+            std::cout << "1. Convert Wood to Energy (Requires PowerPlant)\n";
+            std::cout << "2. Exchange Metal to Wood (Requires Warehouse)\n";
+            std::cout << "0. Cancel\nChoice: ";
+            std::cin >> distChoice;
+            if (distChoice == 1) {
+                std::cout << "Wood amount: "; std::cin >> amt;
+                cmd = "allocate wood " + std::to_string(amt);
+            }
+            else if (distChoice == 2) {
+                std::cout << "Metal amount: "; std::cin >> amt;
+                cmd = "allocate ore " + std::to_string(amt);
             }
             break;
         }
-        case 4: {
-            std::cout << "\nUnits on field (" << field.size() << "):\n";
-            for (std::size_t i = 0; i < field.size(); ++i) {
-                Unit* u = field.getUnit(i);
-                std::cout << "ID: " << u->getId()
-                    << " | " << u->getType()
-                    << " at (" << u->getX() << ", " << u->getY() << ")"
-                    << " HP=" << u->getHealth().getValue()
-                    << " ATK=" << u->getAttack()
-                    << " Gold=" << u->getGold() << "\n";
-            }
-            std::cout << "\nPress Enter to continue...";
-            std::cin.ignore(10000, '\n');
-            std::cin.get();
+        case 4:
+            cmd = "status";
             break;
         }
-        case 5:
-            break;
-        case 6: {
-            int id;
-            std::cout << "Unit ID to build base: "; std::cin >> id;
-            int idx = findUnitIndexById(field, id);
-            if (idx == -1) { std::cout << "Invalid ID!\n"; break; }
-            Unit* u = field.getUnit(idx);
-
-            if (u->getGold() < 1000) {
-                std::cout << "Not enough gold! Need 1000, have " << u->getGold() << ".\n";
-                break;
-            }
-
-            char dir;
-            std::cout << "Direction to build (W/A/S/D): "; std::cin >> dir;
-            int nx = u->getX(), ny = u->getY();
-            if (dir == 'w' || dir == 'W') --ny;
-            else if (dir == 's' || dir == 'S') ++ny;
-            else if (dir == 'a' || dir == 'A') --nx;
-            else if (dir == 'd' || dir == 'D') ++nx;
-
-            if (nx < 0 || nx >= field.getWidth() || ny < 0 || ny >= field.getHeight()) {
-                std::cout << "Out of bounds!\n"; break;
-            }
-            if (field.getObjectAt(nx, ny)) {
-                std::cout << "Cell already occupied!\n"; break;
-            }
-
-            bool unitHere = false;
-            for (std::size_t i = 0; i < field.size(); ++i) {
-                if (field.getUnit(i)->getX() == nx && field.getUnit(i)->getY() == ny) {
-                    unitHere = true; break;
-                }
-            }
-            if (unitHere) { std::cout << "Unit already there!\n"; break; }
-
-            u->spendGold(1000);
-            field.addObject(nx, ny, std::make_unique<Castle>());
-            std::cout << "Base built at (" << nx << ", " << ny << ")!\n";
-            break;
-        }
-        case 0:
-            break;
-        default:
-            break;
+        if (!cmd.empty()) {
+            facade.executeUserInput(cmd);
+            waitForEnter();
         }
     }
+    break;
 }
-
-
+case 3: {
+    clearScreen();
+    facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+    std::cout << "\n----------------------------------------\n";
+    std::cout << "=== GAME STATE ===\n";
+    facade.executeUserInput("status");
+    waitForEnter();
+    break;
+}
+case 4: {
+    clearScreen();
+    facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+    std::cout << "\n----------------------------------------\n";
+    std::cout << "=== ENDING TURN " << facade.getCurrentTurn() << " ===\n";
+    facade.updateTime();
+    std::cout << "Turn " << facade.getCurrentTurn() << " started! Unit moves restored, energy and buildings updated.\n";
+    waitForEnter();
+    break;
+}
+}
+}
+}
 int main() {
     setlocale(LC_ALL, "Russian");
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -432,28 +367,18 @@ int main() {
     GetConsoleMode(hOut, &dwMode);
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     SetConsoleMode(hOut, dwMode);
-
     int choice = -1;
     while (true) {
         clearScreen();
         std::cout << "\n    MAIN MENU (MMO RPG)\n";
-        std::cout << "1. Lab 1 Scenarios\n";
-        std::cout << "2. Lab 2 Scenarios\n";
-        std::cout << "3. Free play\n";
-        std::cout << "0. Exit\n";
-        std::cout << "Choose an option: ";
+        std::cout << "1. Lab 1 Scenarios\n2. Lab 2 Scenarios\n3. Lab 3 Scenarios (Patterns)\n4. Free play\n0. Exit\nChoose an option: ";
         std::cin >> choice;
-
-        if (std::cin.fail()) {
-            std::cin.clear(); std::cin.ignore(10000, '\n'); continue;
-        }
-
+        if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
         if (choice == 1) {
             int subChoice = -1;
             while (subChoice != 0) {
                 clearScreen();
-                std::cout << "\n    LAB 1 SCENARIOS\n";
-                std::cout << "1. Scenario 1.1\n2. Scenario 1.2\n3. Scenario 1.3\n0. Back\nChoice: ";
+                std::cout << "\n    LAB 1 SCENARIOS\n1. Scenario 1.1\n2. Scenario 1.2\n3. Scenario 1.3\n0. Back\nChoice: ";
                 std::cin >> subChoice;
                 if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
                 switch (subChoice) {
@@ -461,7 +386,6 @@ int main() {
                 case 2: scenario12(); waitForEnter(); break;
                 case 3: scenario13(); waitForEnter(); break;
                 case 0: break;
-                default: waitForEnter(); break;
                 }
             }
         }
@@ -469,8 +393,7 @@ int main() {
             int subChoice = -1;
             while (subChoice != 0) {
                 clearScreen();
-                std::cout << "\n    LAB 2 SCENARIOS\n";
-                std::cout << "1. Scenario 2.1\n2. Scenario 2.2\n3. Scenario 2.3\n4. Scenario 2.4\n0. Back\nChoice: ";
+                std::cout << "\n    LAB 2 SCENARIOS\n1. Scenario 2.1\n2. Scenario 2.2\n3. Scenario 2.3\n4. Scenario 2.4\n0. Back\nChoice: ";
                 std::cin >> subChoice;
                 if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
                 switch (subChoice) {
@@ -479,16 +402,34 @@ int main() {
                 case 3: scenario23(); waitForEnter(); break;
                 case 4: scenario24(); waitForEnter(); break;
                 case 0: break;
-                default: waitForEnter(); break;
                 }
             }
         }
         else if (choice == 3) {
+            int subChoice = -1;
+            while (subChoice != 0) {
+                clearScreen();
+                std::cout << "\n    LAB 3 SCENARIOS\n";
+                std::cout << "1. Scenario 3.1 (Creation and Stats)\n";
+                std::cout << "2. Scenario 3.2 (Movement and Attack)\n";
+                std::cout << "3. Scenario 3.3 (Building and Research)\n";
+                std::cout << "4. Scenario 3.4 (Resource Management)\n";
+                std::cout << "0. Back\nChoice: ";
+                std::cin >> subChoice;
+                if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
+                switch (subChoice) {
+                case 1: scenario31(); waitForEnter(); break;
+                case 2: scenario32(); waitForEnter(); break;
+                case 3: scenario33(); waitForEnter(); break;
+                case 4: scenario34(); waitForEnter(); break;
+                case 0: break;
+                }
+            }
+        }
+        else if (choice == 4) {
             runFreePlay();
         }
-        else if (choice == 0) {
-            break;
-        }
+        else if (choice == 0) break;
     }
     return 0;
 }

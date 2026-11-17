@@ -9,6 +9,7 @@ public:
     virtual bool isPassable(const Unit& unit) const = 0;
     virtual double getSpeedModifier(const Unit& unit) const = 0;
     virtual double getDefenseBonus(const Unit& unit) const = 0;
+    virtual double getDefenseMultiplier(const Unit& unit) const { return 1.0; }
     virtual std::string getName() const = 0;
 };
 
@@ -31,6 +32,9 @@ public:
         return 1.0;
     }
     double getDefenseBonus(const Unit&) const override { return 0.2; }
+
+    double getDefenseMultiplier(const Unit&) const override { return 2.0; }
+
     std::string getName() const override { return "Forest"; }
 };
 
@@ -74,6 +78,9 @@ public:
     }
     double getDefenseBonus(const Unit& unit) const override {
         return realTerrain->getDefenseBonus(unit);
+    }
+    double getDefenseMultiplier(const Unit& unit) const override {
+        return realTerrain->getDefenseMultiplier(unit);
     }
     std::string getName() const override {
         return realTerrain->getName();

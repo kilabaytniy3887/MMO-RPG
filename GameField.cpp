@@ -148,10 +148,10 @@ void GameField::removeObject(int x, int y) {
 }
 
 void GameField::printField() const {
-
+    printMap();
 }
 
-void GameField::printMap(int heroX, int heroY, std::string heroType) const {
+void GameField::printMap(int heroX, int heroY, std::string heroType, const std::map<std::pair<int, int>, char>& customBuildings) const {
     const char* RESET = "\033[0m";
     const char* GRAY = "\033[90m";
     const char* ORANGE = "\033[38;5;208m";
@@ -161,6 +161,7 @@ void GameField::printMap(int heroX, int heroY, std::string heroType) const {
     const char* PURPLE = "\033[95m";
     const char* RED = "\033[91m";
     const char* BROWN = "\033[38;5;130m";
+    const char* BLUE = "\033[94m";
 
     std::cout << "    ";
     for (int j = 0; j < width; ++j) {
@@ -192,14 +193,23 @@ void GameField::printMap(int heroX, int heroY, std::string heroType) const {
                 else if (uHere->getType() == "Paladin") sym = 'P';
                 else if (uHere->getType() == "Vampir") sym = 'V';
                 else if (uHere->getType() == "Pegas") sym = 'H';
-                else if (uHere->getType() == "Dark Knight") sym = 'D';
-                std::cout << WHITE << sym << RESET << " ";
+                else if (uHere->getType() == "DarkKnight") sym = 'D';
+                else if (uHere->getType() == "Archangel") sym = 'A';
+                else if (uHere->getType() == "Titan") sym = 'T';
+                else if (uHere->getType() == "Kobold") sym = 'K';
+                else if (uHere->getType() == "BeaverMutant") sym = 'b';
+
+                std::cout << BLUE << sym << RESET << " ";
+            }
+            else if (customBuildings.find({ j, i }) != customBuildings.end()) {
+                std::cout << BLUE << customBuildings.at({ j, i }) << RESET << " ";
             }
             else if (getObjectAt(j, i) && getObjectAt(j, i)->getSymbol() != ' ') {
                 NeutralObject* obj = getObjectAt(j, i);
                 if (obj->getColor() == 13) std::cout << PURPLE << obj->getSymbol() << RESET << " ";
                 else if (obj->getColor() == 12) std::cout << RED << obj->getSymbol() << RESET << " ";
                 else if (obj->getColor() == 6) std::cout << BROWN << obj->getSymbol() << RESET << " ";
+                else if (obj->getColor() == 9) std::cout << BLUE << obj->getSymbol() << RESET << " ";
                 else std::cout << obj->getSymbol() << " ";
             }
             else if (i == heroY && j == heroX) {
@@ -210,7 +220,7 @@ void GameField::printMap(int heroX, int heroY, std::string heroType) const {
                 else if (heroType == "Vampir") sym = 'V';
                 else if (heroType == "Pegas") sym = 'H';
                 else if (heroType == "Dark Knight") sym = 'D';
-                std::cout << WHITE << sym << RESET << " ";
+                std::cout << BLUE << sym << RESET << " ";
             }
             else if (terrainMap[i][j]) {
                 std::string tName = terrainMap[i][j]->getName();

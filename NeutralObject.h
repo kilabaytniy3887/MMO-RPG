@@ -16,7 +16,7 @@ public:
 class HealthRestoreStrategy : public IInteractionStrategy {
 public:
     void apply(Unit& unit) override {
-        unit.getHealth().increase(50);
+        unit.getHealth().healToMax();
     }
 };
 
@@ -140,8 +140,8 @@ public:
         NeutralObject::interact(unit);
     }
 
-    char getSymbol() const override { return 'A'; }
-    int getColor() const override { return 6; }
+    char getSymbol() const override { return 'B'; }
+    int getColor() const override { return 9; }
 };
 
 

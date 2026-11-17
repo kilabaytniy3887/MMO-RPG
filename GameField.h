@@ -42,7 +42,9 @@ public:
     void populateField(UnitFactory& factory, const std::string& type,
         int id, int x, int y);
     void printField() const;
-    void printMap(int heroX = -1, int heroY = -1, std::string heroType = "") const;
+
+    void printMap(int heroX = -1, int heroY = -1, std::string heroType = "",
+        const std::map<std::pair<int, int>, char>& customBuildings = {}) const;
 
     void initTerrain(int w, int h);
     void setTerrain(int x, int y, std::shared_ptr<Terrain> t);

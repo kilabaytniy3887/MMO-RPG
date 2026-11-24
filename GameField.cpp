@@ -4,12 +4,9 @@
 #include <cctype>
 #include <utility>
 #include <Windows.h>
+#include <sstream>
 
-GameField::GameField(int w, int h, int maxU)
-    : width(w), height(h), maxUnits(maxU) {
-    initTerrain(w, h);
-}
-
+GameField::GameField(int w, int h, int maxU) : width(w), height(h), maxUnits(maxU) { initTerrain(w, h); }
 GameField::~GameField() { clear(); }
 
 void GameField::clear() {
@@ -17,9 +14,7 @@ void GameField::clear() {
     units.clear();
 }
 
-GameField::GameField(const GameField& other)
-    : width(other.width), height(other.height), maxUnits(other.maxUnits),
-    terrainMap(other.terrainMap) {
+GameField::GameField(const GameField& other) : width(other.width), height(other.height), maxUnits(other.maxUnits), terrainMap(other.terrainMap) {
     units.reserve(other.units.size());
     for (Unit* u : other.units) units.push_back(u->clone());
 }
@@ -38,18 +33,14 @@ GameField& GameField::operator=(const GameField& other) {
 
 GameField::GameField(GameField&& other) noexcept
     : width(other.width), height(other.height), maxUnits(other.maxUnits),
-    units(std::move(other.units)),
-    terrainMap(std::move(other.terrainMap)),
-    objects(std::move(other.objects)) {
+    units(std::move(other.units)), terrainMap(std::move(other.terrainMap)), objects(std::move(other.objects)) {
     other.units.clear();
 }
 
 GameField& GameField::operator=(GameField&& other) noexcept {
     if (this != &other) {
         clear();
-        width = other.width;
-        height = other.height;
-        maxUnits = other.maxUnits;
+        width = other.width; height = other.height; maxUnits = other.maxUnits;
         units = std::move(other.units);
         terrainMap = std::move(other.terrainMap);
         objects = std::move(other.objects);
@@ -64,8 +55,7 @@ bool GameField::addUnit(Unit* unit) {
         std::cout << "Превышен лимит юнитов на поле!\n";
         delete unit; return false;
     }
-    if (unit->getX() < 0 || unit->getX() >= width ||
-        unit->getY() < 0 || unit->getY() >= height) {
+    if (unit->getX() < 0 || unit->getX() >= width || unit->getY() < 0 || unit->getY() >= height) {
         std::cout << "Юнит вне границ поля!\n";
         delete unit; return false;
     }
@@ -98,16 +88,12 @@ bool GameField::moveUnit(std::size_t index, int newX, int newY) {
     return true;
 }
 
-Unit* GameField::getUnit(std::size_t index) const {
-    return index < units.size() ? units[index] : nullptr;
-}
+Unit* GameField::getUnit(std::size_t index) const { return index < units.size() ? units[index] : nullptr; }
 
-void GameField::populateField(UnitFactory& factory, const std::string& type,
-    int id, int x, int y) {
+void GameField::populateField(UnitFactory& factory, const std::string& type, int id, int x, int y) {
     Unit* newUnit = factory.createUnit(type, id, x, y);
     if (!newUnit) {
-        std::cout << "Фабрика не смогла создать юнит типа: " << type << "\n";
-        return;
+        std::cout << "Фабрика не смогла создать юнит типа: " << type << "\n"; return;
     }
     if (x >= 0 && x < width && y >= 0 && y < height) {
         if (!terrainMap[y][x]->isPassable(*newUnit)) {
@@ -124,17 +110,23 @@ void GameField::initTerrain(int w, int h) {
 }
 
 void GameField::setTerrain(int x, int y, std::shared_ptr<Terrain> t) {
-    if (y >= 0 && y < height && x >= 0 && x < width) terrainMap[y][x] = t;
+    if (y >= 0 && y < height && x >= 0 && x < width) {
+        terrainMap[y][x] = t;
+        if (logger) {
+            std::stringstream ss;
+            ss << "terrain changed at (" << x << "," << y << ") to " << t->getName();
+            logger->log("INFO", "ENV", ss.str());
+        }
+    }
 }
 
 TerrainProxy GameField::getTerrainProxy(int x, int y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) {
-        return TerrainProxy(std::make_shared<Plains>());
-    }
+    if (x < 0 || x >= width || y < 0 || y >= height) return TerrainProxy(std::make_shared<Plains>());
     return TerrainProxy(terrainMap[y][x]);
 }
 
 void GameField::addObject(int x, int y, std::unique_ptr<NeutralObject> obj) {
+    if (obj) obj->setLogger(logger);
     objects[{x, y}] = std::move(obj);
 }
 
@@ -143,13 +135,8 @@ NeutralObject* GameField::getObjectAt(int x, int y) const {
     return (it != objects.end()) ? it->second.get() : nullptr;
 }
 
-void GameField::removeObject(int x, int y) {
-    objects.erase({ x, y });
-}
-
-void GameField::printField() const {
-    printMap();
-}
+void GameField::removeObject(int x, int y) { objects.erase({ x, y }); }
+void GameField::printField() const { printMap(); }
 
 void GameField::printMap(int heroX, int heroY, std::string heroType, const std::map<std::pair<int, int>, char>& customBuildings) const {
     const char* RESET = "\033[0m";
@@ -164,26 +151,17 @@ void GameField::printMap(int heroX, int heroY, std::string heroType, const std::
     const char* BLUE = "\033[94m";
 
     std::cout << "    ";
-    for (int j = 0; j < width; ++j) {
-        std::cout << (j % 10) << " ";
-    }
-    std::cout << "\n";
-
-    std::cout << "    ";
-    for (int j = 0; j < width; ++j) {
-        std::cout << "X ";
-    }
+    for (int j = 0; j < width; ++j) std::cout << (j % 10) << " ";
+    std::cout << "\n    ";
+    for (int j = 0; j < width; ++j) std::cout << "X ";
     std::cout << "\n";
 
     for (int i = 0; i < height; ++i) {
         std::cout << (i % 10) << " X ";
-
         for (int j = 0; j < width; ++j) {
             Unit* uHere = nullptr;
             for (Unit* u : units) {
-                if (u->getX() == j && u->getY() == i) {
-                    uHere = u; break;
-                }
+                if (u->getX() == j && u->getY() == i) { uHere = u; break; }
             }
 
             if (uHere) {
@@ -198,7 +176,6 @@ void GameField::printMap(int heroX, int heroY, std::string heroType, const std::
                 else if (uHere->getType() == "Titan") sym = 'T';
                 else if (uHere->getType() == "Kobold") sym = 'K';
                 else if (uHere->getType() == "BeaverMutant") sym = 'b';
-
                 std::cout << BLUE << sym << RESET << " ";
             }
             else if (customBuildings.find({ j, i }) != customBuildings.end()) {
@@ -237,8 +214,6 @@ void GameField::printMap(int heroX, int heroY, std::string heroType, const std::
     }
 
     std::cout << "    ";
-    for (int j = 0; j < width; ++j) {
-        std::cout << "X ";
-    }
+    for (int j = 0; j < width; ++j) std::cout << "X ";
     std::cout << "\n";
 }

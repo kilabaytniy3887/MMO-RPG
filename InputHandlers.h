@@ -129,24 +129,24 @@ public:
 
         if (cmd == "build") {
             std::string type; int x, y;
-            if (ss >> type >> x >> y) { 
+            if (ss >> type >> x >> y) {
                 med->executeCommand(std::make_unique<BuildCommand>(med, type, x, y)); return true;
             }
         }
         else if (cmd == "produce") {
             std::string type; int x, y;
-            if (ss >> type >> x >> y) { 
-                med->executeCommand(std::make_unique<ProduceUnitCommand>(med, type, x, y)); return true; 
+            if (ss >> type >> x >> y) {
+                med->executeCommand(std::make_unique<ProduceUnitCommand>(med, type, x, y)); return true;
             }
         }
         else if (cmd == "research") {
-            std::string tech; if (ss >> tech) { 
-                med->executeCommand(std::make_unique<ResearchCommand>(med, tech)); return true; 
+            std::string tech; if (ss >> tech) {
+                med->executeCommand(std::make_unique<ResearchCommand>(med, tech)); return true;
             }
         }
         else if (cmd == "allocate") {
-            std::string res; int amount; if (ss >> res >> amount) { 
-                med->executeCommand(std::make_unique<AllocateCommand>(med, res, amount)); return true; 
+            std::string res; int amount; if (ss >> res >> amount) {
+                med->executeCommand(std::make_unique<AllocateCommand>(med, res, amount)); return true;
             }
         }
         return InputHandler::handle(input, med);
@@ -165,23 +165,29 @@ public:
             }
         }
         else if (cmd == "attack") {
-            int atk, def; if (ss >> atk >> def) { 
+            int atk, def; if (ss >> atk >> def) {
                 med->executeCommand(std::make_unique<AttackCommand>(med, atk, def)); return true;
             }
         }
         else if (cmd == "attack_building") {
-            int atk, bId; if (ss >> atk >> bId) { 
+            int atk, bId; if (ss >> atk >> bId) {
                 med->executeCommand(std::make_unique<AttackBuildingCommand>(med, atk, bId)); return true;
             }
         }
         else if (cmd == "gather") {
-            int id; if (ss >> id) { 
-                med->executeCommand(std::make_unique<GatherCommand>(med, id)); return true; 
+            int id; if (ss >> id) {
+                med->executeCommand(std::make_unique<GatherCommand>(med, id)); return true;
             }
         }
         else if (cmd == "heal") {
             int id; if (ss >> id) {
-                med->executeCommand(std::make_unique<HealCommand>(med, id)); return true; 
+                med->executeCommand(std::make_unique<HealCommand>(med, id)); return true;
+            }
+        }
+        else if (cmd == "damage") {
+            int id, dmg; if (ss >> id >> dmg) {
+                med->damageUnit(id, dmg);
+                return true;
             }
         }
         return InputHandler::handle(input, med);
@@ -191,8 +197,35 @@ public:
 class SystemCommandHandler : public InputHandler {
 public:
     bool handle(const std::string& input, GameMediator* med) override {
-        if (input == "status") { med->executeCommand(std::make_unique<StatusCommand>(med)); return true; }
-        if (input == "undo") { med->executeCommand(std::make_unique<UndoCommand>(med)); return true; }
+        std::stringstream ss(input);
+        std::string cmd; ss >> cmd;
+
+        if (cmd == "status") { med->executeCommand(std::make_unique<StatusCommand>(med)); return true; }
+        if (cmd == "undo") { med->executeCommand(std::make_unique<UndoCommand>(med)); return true; }
+
+        if (cmd == "set_logger") {
+            std::string type; ss >> type;
+            if (type == "console") {
+                med->getLogger()->setLogger(std::make_unique<ConsoleLogger>(med->getLogger()->getFormatter()));
+            }
+            else if (type == "file") {
+                std::string filename; ss >> filename;
+                med->getLogger()->setLogger(std::make_unique<FileLogger>(filename, med->getLogger()->getFormatter()));
+            }
+            else if (type == "null") {
+                med->getLogger()->setLogger(std::make_unique<NullLogger>());
+            }
+            return true;
+        }
+
+        if (cmd == "set_format") {
+            std::string type; ss >> type;
+            if (type == "text") med->getLogger()->setFormatter(std::make_shared<TextFormatter>());
+            else if (type == "json") med->getLogger()->setFormatter(std::make_shared<JsonFormatter>());
+            else if (type == "csv") med->getLogger()->setFormatter(std::make_shared<CsvFormatter>());
+            return true;
+        }
+
         return InputHandler::handle(input, med);
     }
 };

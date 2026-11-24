@@ -8,6 +8,7 @@
 #include "UnitFactory.h"
 #include "Terrain.h"
 #include "NeutralObject.h"
+#include "Logger.h"
 
 class GameField {
 private:
@@ -17,6 +18,7 @@ private:
     std::vector<Unit*> units;
     std::vector<std::vector<std::shared_ptr<Terrain>>> terrainMap;
     std::map<std::pair<int, int>, std::unique_ptr<NeutralObject>> objects;
+    LoggingProxy* logger = nullptr;
 
 public:
     GameField(int w = 10, int h = 10, int maxU = 10);
@@ -26,6 +28,8 @@ public:
     GameField& operator=(const GameField& other);
     GameField(GameField&& other) noexcept;
     GameField& operator=(GameField&& other) noexcept;
+
+    void setLogger(LoggingProxy* log) { logger = log; }
 
     bool addUnit(Unit* unit);
     void removeUnit(std::size_t index);
@@ -39,12 +43,9 @@ public:
     int getWidth()  const { return width; }
     int getHeight() const { return height; }
 
-    void populateField(UnitFactory& factory, const std::string& type,
-        int id, int x, int y);
+    void populateField(UnitFactory& factory, const std::string& type, int id, int x, int y);
     void printField() const;
-
-    void printMap(int heroX = -1, int heroY = -1, std::string heroType = "",
-        const std::map<std::pair<int, int>, char>& customBuildings = {}) const;
+    void printMap(int heroX = -1, int heroY = -1, std::string heroType = "", const std::map<std::pair<int, int>, char>& customBuildings = {}) const;
 
     void initTerrain(int w, int h);
     void setTerrain(int x, int y, std::shared_ptr<Terrain> t);
@@ -59,12 +60,8 @@ public:
         const GameField* field;
         std::size_t currentIndex;
     public:
-        GameFieldIterator(const GameField* f, std::size_t index)
-            : field(f), currentIndex(index) {
-        }
-        bool operator!=(const GameFieldIterator& other) const {
-            return currentIndex != other.currentIndex;
-        }
+        GameFieldIterator(const GameField* f, std::size_t index) : field(f), currentIndex(index) {}
+        bool operator!=(const GameFieldIterator& other) const { return currentIndex != other.currentIndex; }
         Unit* operator*() const { return field->units[currentIndex]; }
         GameFieldIterator& operator++() { ++currentIndex; return *this; }
     };

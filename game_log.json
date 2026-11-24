@@ -1,0 +1,2 @@
+[2026-11-24 13:41:56] [INFO] [USER] set_format json
+{"timestamp": "2026-11-24 13:41:56", "level": "INFO", "source": "USER", "message": "build Barracks at 3,3"}

@@ -12,6 +12,7 @@
 #include "ScenariosLab1.h"
 #include "ScenariosLab2.h"
 #include "ScenariosLab3.h"
+#include "ScenariosLab4.h"
 #include "GameFacade.h" 
 
 void clearScreen() {
@@ -26,7 +27,7 @@ void waitForEnter() {
 
 void runFreePlay() {
     clearScreen();
-    std::cout << "\n=== FREE PLAY MODE (Lab 3 Architecture) ===\n";
+    std::cout << "\n=== FREE PLAY MODE (Lab 4 Architecture) ===\n";
 
     int w = 20, h = 20;
     int baseX = 2, baseY = 2;
@@ -119,6 +120,7 @@ void runFreePlay() {
         std::cout << "2. Base Management\n";
         std::cout << "3. View Game State\n";
         std::cout << "4. End Turn (Next Turn)\n";
+        std::cout << "5. Logging Settings\n"; // Новый пункт меню
         std::cout << "0. Exit to main menu\nChoice: ";
 
         if (!(std::cin >> mainChoice)) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
@@ -247,119 +249,164 @@ void runFreePlay() {
                 case 6:
                     cmd = "status";
                     break;
-}
+                }
 
-if (!cmd.empty()) {
-    facade.executeUserInput(cmd);
-    waitForEnter();
-}
-}
-break;
-}
-case 2: {
-    int subChoice = -1;
-    while (subChoice != 0) {
-        clearScreen();
-        facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
-        std::cout << "\n----------------------------------------\n";
-        std::cout << "=== BASE MANAGEMENT (Turn " << facade.getCurrentTurn() << ") ===\n";
-        std::cout << "1. Build building\n2. Research technology (Requires Lab)\n3. Distribute resources\n4. View Base Stats\n0. Back\nChoice: ";
-        std::cin >> subChoice;
-        if (subChoice == 0) break;
-
-        std::string cmd = "", type; int x, y, amt;
-        switch (subChoice) {
-        case 1: {
-            int bTypeChoice;
-            std::cout << "\n--- Select building type ---\n";
-            std::cout << "1. Barracks (100 Wood, 50 Metal)\n";
-            std::cout << "2. Hospital (150 Wood, 100 Metal)\n";
-            std::cout << "3. Lab (200 Wood, 150 Metal)\n";
-            std::cout << "4. PowerPlant (250 Wood, 200 Metal)\n";
-            std::cout << "5. Warehouse (120 Wood, 80 Metal)\n";
-            std::cout << "0. Cancel\nChoice: ";
-            std::cin >> bTypeChoice;
-            switch (bTypeChoice) {
-            case 1: type = "Barracks"; break;
-            case 2: type = "Hospital"; break;
-            case 3: type = "Lab"; break;
-            case 4: type = "PowerPlant"; break;
-            case 5: type = "Warehouse"; break;
-            case 0: break;
+                if (!cmd.empty()) {
+                    facade.executeUserInput(cmd);
+                    waitForEnter();
+                }
             }
-            if (type.empty()) break;
-            std::cout << "X Y (Must be a free cell): "; std::cin >> x >> y;
-            cmd = "build " + type + " " + std::to_string(x) + " " + std::to_string(y);
             break;
         }
         case 2: {
-            int rTypeChoice;
-            std::cout << "\n--- Select research (Takes 2 turns) ---\n";
-            std::cout << "1. Armor Up (+20 Armor, Lab Lvl 1)\n";
-            std::cout << "2. Damage Up (+30 Damage, Lab Lvl 2)\n";
-            std::cout << "3. Speed Up (+1 Speed, Lab Lvl 3)\n";
-            std::cout << "0. Cancel\nChoice: ";
-            std::cin >> rTypeChoice;
-            switch (rTypeChoice) {
-            case 1: type = "ArmorUp"; break;
-            case 2: type = "DamageUp"; break;
-            case 3: type = "SpeedUp"; break;
-            case 0: break;
+            int subChoice = -1;
+            while (subChoice != 0) {
+                clearScreen();
+                facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+                std::cout << "\n----------------------------------------\n";
+                std::cout << "=== BASE MANAGEMENT (Turn " << facade.getCurrentTurn() << ") ===\n";
+                std::cout << "1. Build building\n2. Research technology (Requires Lab)\n3. Distribute resources\n4. View Base Stats\n0. Back\nChoice: ";
+                std::cin >> subChoice;
+                if (subChoice == 0) break;
+
+                std::string cmd = "", type; int x, y, amt;
+                switch (subChoice) {
+                case 1: {
+                    int bTypeChoice;
+                    std::cout << "\n--- Select building type ---\n";
+                    std::cout << "1. Barracks (100 Wood, 50 Metal)\n";
+                    std::cout << "2. Hospital (150 Wood, 100 Metal)\n";
+                    std::cout << "3. Lab (200 Wood, 150 Metal)\n";
+                    std::cout << "4. PowerPlant (250 Wood, 200 Metal)\n";
+                    std::cout << "5. Warehouse (120 Wood, 80 Metal)\n";
+                    std::cout << "0. Cancel\nChoice: ";
+                    std::cin >> bTypeChoice;
+                    switch (bTypeChoice) {
+                    case 1: type = "Barracks"; break;
+                    case 2: type = "Hospital"; break;
+                    case 3: type = "Lab"; break;
+                    case 4: type = "PowerPlant"; break;
+                    case 5: type = "Warehouse"; break;
+                    case 0: break;
+                    }
+                    if (type.empty()) break;
+                    std::cout << "X Y (Must be a free cell): "; std::cin >> x >> y;
+                    cmd = "build " + type + " " + std::to_string(x) + " " + std::to_string(y);
+                    break;
+                }
+                case 2: {
+                    int rTypeChoice;
+                    std::cout << "\n--- Select research (Takes 2 turns) ---\n";
+                    std::cout << "1. Armor Up (+20 Armor, Lab Lvl 1)\n";
+                    std::cout << "2. Damage Up (+30 Damage, Lab Lvl 2)\n";
+                    std::cout << "3. Speed Up (+1 Speed, Lab Lvl 3)\n";
+                    std::cout << "0. Cancel\nChoice: ";
+                    std::cin >> rTypeChoice;
+                    switch (rTypeChoice) {
+                    case 1: type = "ArmorUp"; break;
+                    case 2: type = "DamageUp"; break;
+                    case 3: type = "SpeedUp"; break;
+                    case 0: break;
+                    }
+                    if (type.empty()) break;
+                    cmd = "research " + type;
+                    break;
+                }
+                case 3: {
+                    int distChoice;
+                    std::cout << "\n--- Distribute resources ---\n";
+                    std::cout << "1. Convert Wood to Energy (Requires PowerPlant)\n";
+                    std::cout << "2. Exchange Metal to Wood (Requires Warehouse)\n";
+                    std::cout << "0. Cancel\nChoice: ";
+                    std::cin >> distChoice;
+                    if (distChoice == 1) {
+                        std::cout << "Wood amount: "; std::cin >> amt;
+                        cmd = "allocate wood " + std::to_string(amt);
+                    }
+                    else if (distChoice == 2) {
+                        std::cout << "Metal amount: "; std::cin >> amt;
+                        cmd = "allocate ore " + std::to_string(amt);
+                    }
+                    break;
+                }
+                case 4:
+                    cmd = "status";
+                    break;
+                }
+                if (!cmd.empty()) {
+                    facade.executeUserInput(cmd);
+                    waitForEnter();
+                }
             }
-            if (type.empty()) break;
-            cmd = "research " + type;
             break;
         }
         case 3: {
-            int distChoice;
-            std::cout << "\n--- Distribute resources ---\n";
-            std::cout << "1. Convert Wood to Energy (Requires PowerPlant)\n";
-            std::cout << "2. Exchange Metal to Wood (Requires Warehouse)\n";
-            std::cout << "0. Cancel\nChoice: ";
-            std::cin >> distChoice;
-            if (distChoice == 1) {
-                std::cout << "Wood amount: "; std::cin >> amt;
-                cmd = "allocate wood " + std::to_string(amt);
-            }
-            else if (distChoice == 2) {
-                std::cout << "Metal amount: "; std::cin >> amt;
-                cmd = "allocate ore " + std::to_string(amt);
-            }
-            break;
-        }
-        case 4:
-            cmd = "status";
-            break;
-        }
-        if (!cmd.empty()) {
-            facade.executeUserInput(cmd);
+            clearScreen();
+            facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+            std::cout << "\n----------------------------------------\n";
+            std::cout << "=== GAME STATE ===\n";
+            facade.executeUserInput("status");
             waitForEnter();
+            break;
+        }
+        case 4: {
+            clearScreen();
+            facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
+            std::cout << "\n----------------------------------------\n";
+            std::cout << "=== ENDING TURN " << facade.getCurrentTurn() << " ===\n";
+            facade.updateTime();
+            std::cout << "Turn " << facade.getCurrentTurn() << " started! Unit moves restored, energy and buildings updated.\n";
+            waitForEnter();
+            break;
+        }
+        case 5: {
+            int logChoice = -1;
+            while (logChoice != 0) {
+                clearScreen();
+                std::cout << "\n=== LOGGING SETTINGS ===\n";
+                std::cout << "1. Set Logger: Console\n";
+                std::cout << "2. Set Logger: File\n";
+                std::cout << "3. Set Logger: Null (Disable)\n";
+                std::cout << "4. Set Format: Text\n";
+                std::cout << "5. Set Format: JSON\n";
+                std::cout << "6. Set Format: CSV\n";
+                std::cout << "0. Back\nChoice: ";
+                std::cin >> logChoice;
+
+                if (logChoice == 1) {
+                    facade.executeUserInput("set_logger console");
+                    waitForEnter();
+                }
+                else if (logChoice == 2) {
+                    std::string filename;
+                    std::cout << "Enter filename (e.g., game.log): ";
+                    std::cin >> filename;
+                    facade.executeUserInput("set_logger file " + filename);
+                    waitForEnter();
+                }
+                else if (logChoice == 3) {
+                    facade.executeUserInput("set_logger null");
+                    waitForEnter();
+                }
+                else if (logChoice == 4) {
+                    facade.executeUserInput("set_format text");
+                    waitForEnter();
+                }
+                else if (logChoice == 5) {
+                    facade.executeUserInput("set_format json");
+                    waitForEnter();
+                }
+                else if (logChoice == 6) {
+                    facade.executeUserInput("set_format csv");
+                    waitForEnter();
+                }
+            }
+            break;
+        }
         }
     }
-    break;
 }
-case 3: {
-    clearScreen();
-    facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
-    std::cout << "\n----------------------------------------\n";
-    std::cout << "=== GAME STATE ===\n";
-    facade.executeUserInput("status");
-    waitForEnter();
-    break;
-}
-case 4: {
-    clearScreen();
-    facade.printMap(playerBase->getX(), playerBase->getY(), "Base");
-    std::cout << "\n----------------------------------------\n";
-    std::cout << "=== ENDING TURN " << facade.getCurrentTurn() << " ===\n";
-    facade.updateTime();
-    std::cout << "Turn " << facade.getCurrentTurn() << " started! Unit moves restored, energy and buildings updated.\n";
-    waitForEnter();
-    break;
-}
-}
-}
-}
+
 int main() {
     setlocale(LC_ALL, "Russian");
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -367,13 +414,22 @@ int main() {
     GetConsoleMode(hOut, &dwMode);
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     SetConsoleMode(hOut, dwMode);
+
     int choice = -1;
     while (true) {
         clearScreen();
         std::cout << "\n    MAIN MENU (MMO RPG)\n";
-        std::cout << "1. Lab 1 Scenarios\n2. Lab 2 Scenarios\n3. Lab 3 Scenarios (Patterns)\n4. Free play\n0. Exit\nChoose an option: ";
+        std::cout << "1. Lab 1 Scenarios\n";
+        std::cout << "2. Lab 2 Scenarios\n";
+        std::cout << "3. Lab 3 Scenarios (Patterns)\n";
+        std::cout << "4. Lab 4 Scenarios (Logging)\n";
+        std::cout << "5. Free play\n";
+        std::cout << "0. Exit\n";
+        std::cout << "Choose an option: ";
         std::cin >> choice;
+
         if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
+
         if (choice == 1) {
             int subChoice = -1;
             while (subChoice != 0) {
@@ -427,9 +483,32 @@ int main() {
             }
         }
         else if (choice == 4) {
+            int subChoice = -1;
+            while (subChoice != 0) {
+                clearScreen();
+                std::cout << "\n    LAB 4 SCENARIOS (LOGGING)\n";
+                std::cout << "1. Scenario 4.1 (Logging Console Text)\n";
+                std::cout << "2. Scenario 4.2 (Logging File JSON)\n";
+                std::cout << "3. Scenario 4.3 (Disable/Enable Logging)\n";
+                std::cout << "4. Scenario 4.4 (Switch Formats)\n";
+                std::cout << "0. Back\nChoice: ";
+                std::cin >> subChoice;
+                if (std::cin.fail()) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
+                switch (subChoice) {
+                case 1: scenario41(); waitForEnter(); break;
+                case 2: scenario42(); waitForEnter(); break;
+                case 3: scenario43(); waitForEnter(); break;
+                case 4: scenario44(); waitForEnter(); break;
+                case 0: break;
+                }
+            }
+        }
+        else if (choice == 5) {
             runFreePlay();
         }
-        else if (choice == 0) break;
+        else if (choice == 0) {
+            break;
+        }
     }
     return 0;
 }

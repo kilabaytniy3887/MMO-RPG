@@ -3,11 +3,13 @@
 #include "GameField.h"
 #include "UnitFactory.h"
 #include "GameEntities.h"
+#include "Logger.h"
 #include <vector>
 #include <memory>
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 class ICommand;
 
@@ -16,6 +18,7 @@ private:
     Base* base;
     GameField* field;
     AllUnitsFactory* factory;
+    LoggingProxy* logger;
 
     std::vector<Building> buildings;
     std::vector<Research> research;
@@ -65,25 +68,26 @@ private:
 
     bool isCellFree(int x, int y) const {
         if (x == base->getX() && y == base->getY()) return false;
-
         for (const auto& b : buildings) {
             if (b.x == x && b.y == y) return false;
         }
-
         for (std::size_t i = 0; i < field->size(); ++i) {
             Unit* u = field->getUnit(i);
             if (u->getX() == x && u->getY() == y) return false;
         }
-
         return true;
     }
 
 public:
-    GameMediator(Base* b, GameField* f, AllUnitsFactory* fac)
-        : base(b), field(f), factory(fac), nextBuildingId(1), nextUnitId(1),
+    GameMediator(Base* b, GameField* f, AllUnitsFactory* fac, LoggingProxy* log = nullptr)
+        : base(b), field(f), factory(fac), logger(log), nextBuildingId(1), nextUnitId(1),
         currentTurn(1), currentEnergy(200), maxEnergy(200), labLevel(0),
         armorResearchDone(false), damageResearchDone(false), speedResearchDone(false) {
+        if (base) base->setLogger(logger);
+        if (field) field->setLogger(logger);
     }
+
+    LoggingProxy* getLogger() const { return logger; }
 
     void executeCommand(std::unique_ptr<ICommand> cmd);
     void undoLastCommand();
@@ -123,7 +127,6 @@ public:
 
     void update() {
         currentTurn++;
-
         for (auto& b : buildings) {
             bool wasBuilt = b.isBuilt;
             b.update();
@@ -138,8 +141,7 @@ public:
                 }
                 else if (b.type == Building::Type::Warehouse) {
                     base->increaseStorageLimit(1000);
-                    std::cout << "[Mediator] Warehouse finished! Resource storage limit increased to "
-                        << base->getMaxResources() << ".\n";
+                    std::cout << "[Mediator] Warehouse finished! Resource storage limit increased to " << base->getMaxResources() << ".\n";
                 }
             }
         }
@@ -171,7 +173,6 @@ public:
             field->getUnit(i)->setOrder("Idle");
         }
 
-        // Пересчёт энергии за ход
         int energyBalance = 0;
         for (auto& b : buildings) {
             if (b.isBuilt) {
@@ -179,11 +180,11 @@ public:
                 else if (b.type == Building::Type::Barracks) energyBalance -= 20;
                 else if (b.type == Building::Type::Hospital) energyBalance -= 20;
                 else if (b.type == Building::Type::Laboratory) energyBalance -= 30;
+                else if (b.type == Building::Type::Warehouse) energyBalance -= 5;
             }
         }
 
         currentEnergy += energyBalance;
-
         if (currentEnergy > maxEnergy) currentEnergy = maxEnergy;
         else if (currentEnergy < 0) {
             currentEnergy = 0;
@@ -193,13 +194,10 @@ public:
 
     int buildBuilding(const std::string& type, int x, int y) {
         if (x < 0 || x >= field->getWidth() || y < 0 || y >= field->getHeight()) {
-            std::cout << "[Mediator] Coordinates out of map bounds!\n";
-            return -1;
+            std::cout << "[Mediator] Coordinates out of map bounds!\n"; return -1;
         }
-
         if (!isCellFree(x, y)) {
-            std::cout << "[Mediator] Cell (" << x << "," << y << ") is occupied! Choose a free cell.\n";
-            return -1;
+            std::cout << "[Mediator] Cell (" << x << "," << y << ") is occupied! Choose a free cell.\n"; return -1;
         }
 
         int costWood = 0, costOre = 0;
@@ -213,14 +211,20 @@ public:
         else return -1;
 
         if (base->getWood() < costWood || base->getOre() < costOre) {
-            std::cout << "[Mediator] Not enough resources to build " << type << "!\n";
-            return -1;
+            std::cout << "[Mediator] Not enough resources to build " << type << "!\n"; return -1;
         }
 
         base->addWood(-costWood);
         base->addOre(-costOre);
 
         buildings.emplace_back(nextBuildingId, bType, x, y);
+
+        if (logger) {
+            std::stringstream ss;
+            ss << type << " construction started at (" << x << "," << y << ")";
+            logger->log("INFO", "BASE", ss.str());
+        }
+
         std::cout << "[Mediator] Started building " << type << " at (" << x << "," << y << ") [ID: " << nextBuildingId << ", 2 turns left]\n";
         return nextBuildingId++;
     }
@@ -232,25 +236,25 @@ public:
 
     void researchTech(const std::string& tech) {
         if (labLevel == 0) {
-            std::cout << "[Mediator] Need a built Laboratory to research!\n";
-            return;
+            std::cout << "[Mediator] Need a built Laboratory to research!\n"; return;
         }
-
         if (isResearchActive(tech)) {
-            std::cout << "[Mediator] Research '" << tech << "' is already in progress!\n";
-            return;
+            std::cout << "[Mediator] Research '" << tech << "' is already in progress!\n"; return;
         }
 
         if (tech == "ArmorUp" && labLevel >= 1 && !armorResearchDone) {
             research.emplace_back("ArmorUp", 2);
+            if (logger) logger->log("INFO", "BASE", "research '" + tech + "' started");
             std::cout << "[Mediator] Started research: Armor Up (2 turns left).\n";
         }
         else if (tech == "DamageUp" && labLevel >= 2 && !damageResearchDone) {
             research.emplace_back("DamageUp", 2);
+            if (logger) logger->log("INFO", "BASE", "research '" + tech + "' started");
             std::cout << "[Mediator] Started research: Damage Up (2 turns left).\n";
         }
         else if (tech == "SpeedUp" && labLevel >= 3 && !speedResearchDone) {
             research.emplace_back("SpeedUp", 2);
+            if (logger) logger->log("INFO", "BASE", "research '" + tech + "' started");
             std::cout << "[Mediator] Started research: Speed Up (2 turns left).\n";
         }
         else {
@@ -259,68 +263,56 @@ public:
     }
 
     void allocateResources(const std::string& res, int amount) {
-        if (amount <= 0) {
-            std::cout << "[Mediator] Amount must be positive.\n";
-            return;
-        }
+        if (amount <= 0) { std::cout << "[Mediator] Amount must be positive.\n"; return; }
 
         if (res == "wood") {
-            if (!hasBuilding(Building::Type::PowerPlant)) {
-                std::cout << "[Mediator] Need a built PowerPlant to convert Wood to Energy!\n";
-                return;
-            }
+            if (!hasBuilding(Building::Type::PowerPlant)) { std::cout << "[Mediator] Need a built PowerPlant to convert Wood to Energy!\n"; return; }
             if (base->getWood() >= amount) {
-                base->addWood(-amount);
-                currentEnergy += amount;
+                base->addWood(-amount); currentEnergy += amount;
                 if (currentEnergy > maxEnergy) currentEnergy = maxEnergy;
-                std::cout << "[Mediator] Converted " << amount << " Wood into Energy. Current Energy: "
-                    << currentEnergy << "/" << maxEnergy << "\n";
+                std::cout << "[Mediator] Converted " << amount << " Wood into Energy. Current Energy: " << currentEnergy << "/" << maxEnergy << "\n";
             }
-            else {
-                std::cout << "[Mediator] Not enough Wood!\n";
-            }
+            else std::cout << "[Mediator] Not enough Wood!\n";
         }
         else if (res == "ore") {
-            if (!hasBuilding(Building::Type::Warehouse)) {
-                std::cout << "[Mediator] Need a built Warehouse to exchange Metal for Wood!\n";
-                return;
-            }
+            if (!hasBuilding(Building::Type::Warehouse)) { std::cout << "[Mediator] Need a built Warehouse to exchange Metal for Wood!\n"; return; }
             if (base->getOre() >= amount) {
-                base->addOre(-amount);
-                base->addWood(amount);
-                std::cout << "[Mediator] Exchanged " << amount << " Metal into Wood via Warehouse. Current Wood: "
-                    << base->getWood() << "/" << base->getMaxResources() << "\n";
+                base->addOre(-amount); base->addWood(amount);
+                std::cout << "[Mediator] Exchanged " << amount << " Metal into Wood via Warehouse. Current Wood: " << base->getWood() << "/" << base->getMaxResources() << "\n";
             }
-            else {
-                std::cout << "[Mediator] Not enough Metal!\n";
-            }
+            else std::cout << "[Mediator] Not enough Metal!\n";
         }
-        else {
-            std::cout << "[Mediator] Unknown resource type (use 'wood' or 'ore').\n";
-        }
+        else std::cout << "[Mediator] Unknown resource type (use 'wood' or 'ore').\n";
     }
+
     int produceUnit(const std::string& type, int x, int y) {
         bool nearBarracks = isBuildingNear(Building::Type::Barracks, x, y);
         bool nearBase = (std::abs(base->getX() - x) <= 1 && std::abs(base->getY() - y) <= 1);
         if (!nearBarracks && !nearBase) {
-            std::cout << "[Mediator] Can only produce units next to a Barracks or the Base!\n";
-            return -1;
+            std::cout << "[Mediator] Can only produce units next to a Barracks or the Base!\n"; return -1;
         }
         std::string realType = type;
         if (type == "infantry") realType = "Berserk";
         if (realType == "Archangel" && labLevel < 4) { std::cout << "[Mediator] Requires Lab Level 4!\n"; return -1; }
         if (realType == "Titan" && labLevel < 5) { std::cout << "[Mediator] Requires Lab Level 5!\n"; return -1; }
+
         if (base->hasResources(realType)) {
             base->payResources(realType);
             int id = nextUnitId++;
             Unit* u = factory->createUnit(realType, id, x, y);
             if (u) {
                 u->setBase(base);
+                u->setLogger(logger);
                 if (armorResearchDone) u->buffArmor(20);
                 if (damageResearchDone) u->buffDamage(30);
                 if (speedResearchDone) u->buffSpeed(1);
                 if (field->addUnit(u)) {
                     std::cout << "[Mediator] Unit " << realType << " (ID:" << id << ") produced.\n";
+                    if (logger) {
+                        std::stringstream ss;
+                        ss << "Unit " << realType << " (ID=" << id << ") produced at (" << x << "," << y << ")";
+                        logger->log("INFO", "BASE", ss.str());
+                    }
                     return id;
                 }
             }
@@ -328,37 +320,36 @@ public:
         std::cout << "[Mediator] Failed to produce unit (check resources or free cell).\n";
         return -1;
     }
+
     void removeUnit(int id) {
         int idx = findUnitIndex(id);
         if (idx != -1) field->removeUnit(idx);
     }
+
     void moveUnit(int id, int x, int y) {
         int idx = findUnitIndex(id);
         if (idx == -1) return;
         Unit* u = field->getUnit(idx);
         if (!u->hasMoves()) {
-            std::cout << "[Mediator] Unit " << id << " has no movement points left this turn!\n";
-            return;
+            std::cout << "[Mediator] Unit " << id << " has no movement points left this turn!\n"; return;
         }
         TerrainProxy terrain = field->getTerrainProxy(x, y);
         if (!terrain.isPassable(*u)) {
-            std::cout << "[Mediator] Terrain is impassable for " << u->getType() << "!\n";
-            return;
+            std::cout << "[Mediator] Terrain is impassable for " << u->getType() << "!\n"; return;
         }
         if (field->moveUnit(idx, x, y)) {
             u->spendMove(1);
             u->setOrder("Move to (" + std::to_string(x) + "," + std::to_string(y) + ")");
-            std::cout << "[Mediator] Unit " << id << " moved to (" << x << "," << y
-                << "). Moves left: " << u->getMovesLeft() << "/" << u->getSpeed() << "\n";
+            std::cout << "[Mediator] Unit " << id << " moved to (" << x << "," << y << "). Moves left: " << u->getMovesLeft() << "/" << u->getSpeed() << "\n";
         }
-        else {
-            std::cout << "[Mediator] Cannot move unit (blocked or out of bounds).\n";
-        }
+        else std::cout << "[Mediator] Cannot move unit (blocked or out of bounds).\n";
     }
+
     void undoMoveUnit(int id, int oldX, int oldY) {
         int idx = findUnitIndex(id);
         if (idx != -1) field->moveUnit(idx, oldX, oldY);
     }
+
     void gatherResources(int id) {
         int idx = findUnitIndex(id);
         if (idx == -1) return;
@@ -366,43 +357,57 @@ public:
         TerrainProxy t = field->getTerrainProxy(u->getX(), u->getY());
         std::string tName = t.getName();
         std::string uType = u->getType();
+
         if (tName == "Forest") {
             int amount = 50;
             if (uType == "BeaverMutant") amount *= 3;
             base->addWood(amount);
             u->setOrder("Gather Wood");
-            std::cout << "[Mediator] " << uType << " gathered Wood. Storage: "
-                << base->getWood() << "/" << base->getMaxResources() << "\n";
+            std::cout << "[Mediator] " << uType << " gathered Wood. Storage: " << base->getWood() << "/" << base->getMaxResources() << "\n";
+            if (logger) {
+                std::stringstream ss;
+                ss << "Unit " << uType << " (ID=" << id << ") gathered wood, +" << amount << " wood";
+                logger->log("INFO", "UNIT", ss.str());
+            }
         }
         else if (tName == "Mountains") {
             int amount = 30;
             if (uType == "Kobold") amount *= 3;
             base->addOre(amount);
             u->setOrder("Mine Ore");
-            std::cout << "[Mediator] " << uType << " mined Metal. Storage: "
-                << base->getOre() << "/" << base->getMaxResources() << "\n";
+            std::cout << "[Mediator] " << uType << " mined Metal. Storage: " << base->getOre() << "/" << base->getMaxResources() << "\n";
+            if (logger) {
+                std::stringstream ss;
+                ss << "Unit " << uType << " (ID=" << id << ") mined ore, +" << amount << " ore";
+                logger->log("INFO", "UNIT", ss.str());
+            }
         }
-        else {
-            std::cout << "[Mediator] Cannot gather here.\n";
-        }
+        else std::cout << "[Mediator] Cannot gather here.\n";
     }
+
     void undoGather(int id, const std::string& type, int amount) {
         if (type == "wood") base->addWood(-amount);
         if (type == "ore") base->addOre(-amount);
     }
+
     void healUnit(int id) {
         int idx = findUnitIndex(id);
         if (idx != -1) {
             Unit* u = field->getUnit(idx);
             if (!isBuildingNear(Building::Type::Hospital, u->getX(), u->getY())) {
-                std::cout << "[Mediator] Unit must be next to a Hospital to heal!\n";
-                return;
+                std::cout << "[Mediator] Unit must be next to a Hospital to heal!\n"; return;
             }
             u->getHealth().healToMax();
             u->setOrder("Heal at Hospital");
             std::cout << "[Mediator] Unit " << id << " fully healed.\n";
+            if (logger) {
+                std::stringstream ss;
+                ss << "Unit " << u->getType() << " (ID=" << id << ") fully healed.";
+                logger->log("INFO", "UNIT", ss.str());
+            }
         }
     }
+
     void attack(int attackerId, int targetId) {
         int aIdx = findUnitIndex(attackerId);
         int dIdx = findUnitIndex(targetId);
@@ -410,21 +415,18 @@ public:
             if (aIdx == dIdx) return;
             Unit* atk = field->getUnit(aIdx);
             Unit* def = field->getUnit(dIdx);
+
             atk->attackUnit(*def);
             atk->setOrder("Attack Unit ID:" + std::to_string(targetId));
-            std::cout << "[Mediator] " << atk->getType() << " attacked " << def->getType()
-                << " (Target HP: " << def->getHealth().getValue() << "/" << def->getHealth().getMaxValue() << ")\n";
+
+            std::cout << "[Mediator] " << atk->getType() << " attacked " << def->getType() << " (Target HP: " << def->getHealth().getValue() << "/" << def->getHealth().getMaxValue() << ")\n";
         }
-        else {
-            std::cout << "[Mediator] Attacker or target unit not found!\n";
-        }
+        else std::cout << "[Mediator] Attacker or target unit not found!\n";
     }
+
     void attackBuilding(int attackerId, int buildingId) {
         int aIdx = findUnitIndex(attackerId);
-        if (aIdx == -1) {
-            std::cout << "[Mediator] Attacker unit not found!\n";
-            return;
-        }
+        if (aIdx == -1) { std::cout << "[Mediator] Attacker unit not found!\n"; return; }
         Unit* atk = field->getUnit(aIdx);
         for (auto it = buildings.begin(); it != buildings.end(); ++it) {
             if (it->id == buildingId) {
@@ -432,16 +434,24 @@ public:
                 it->hp -= dmg;
                 if (it->hp < 0) it->hp = 0;
                 atk->setOrder("Attack Building ID:" + std::to_string(buildingId));
-                std::cout << "[Mediator] " << atk->getType() << " attacked " << it->getTypeName()
-                    << " (ID:" << buildingId << ") for " << dmg << " damage! "
-                    << "(Building HP: " << it->hp << "/" << it->maxHp << ")\n";
+
+                std::cout << "[Mediator] " << atk->getType() << " attacked " << it->getTypeName() << " (ID:" << buildingId << ") for " << dmg << " damage! (Building HP: " << it->hp << "/" << it->maxHp << ")\n";
+
+                if (logger) {
+                    std::stringstream ss;
+                    ss << "Unit " << atk->getType() << " (ID=" << attackerId << ") damaged building " << it->getTypeName() << " for " << dmg << " HP left: " << it->hp;
+                    logger->log("INFO", "COMBAT", ss.str());
+                }
+
                 if (it->hp == 0) {
                     if (it->type == Building::Type::Warehouse && it->isBuilt) {
                         base->increaseStorageLimit(-1000);
-                        std::cout << "[Mediator] Warehouse destroyed! Storage limit decreased to "
-                            << base->getMaxResources() << ".\n";
+                        std::cout << "[Mediator] Warehouse destroyed! Storage limit decreased to " << base->getMaxResources() << ".\n";
                     }
                     std::cout << "[Mediator] Building " << it->getTypeName() << " (ID:" << buildingId << ") was destroyed!\n";
+                    if (logger) {
+                        logger->log("ALERT", "BASE", it->getTypeName() + " (ID=" + std::to_string(buildingId) + ") destroyed");
+                    }
                     buildings.erase(it);
                 }
                 return;
@@ -449,16 +459,24 @@ public:
         }
         std::cout << "[Mediator] Building with ID " << buildingId << " not found!\n";
     }
+
+    void damageUnit(int id, int dmg) {
+        int idx = findUnitIndex(id);
+        if (idx != -1) {
+            field->getUnit(idx)->takeDamage(dmg);
+        }
+        else {
+            std::cout << "[Mediator] Unit with ID " << id << " not found!\n";
+        }
+    }
+
     void printStatus() {
         int maxRes = base->getMaxResources();
         std::cout << "\n=== GAME STATUS (TURN " << currentTurn << ") ===\n";
-        std::cout << "Resources: " << base->getWood() << "/" << maxRes << " Wood, "
-            << base->getOre() << "/" << maxRes << " Metal, "
-            << base->getGold() << "/" << maxRes << " Gold\n";
+        std::cout << "Resources: " << base->getWood() << "/" << maxRes << " Wood, " << base->getOre() << "/" << maxRes << " Metal, " << base->getGold() << "/" << maxRes << " Gold\n";
         std::cout << "Energy: " << currentEnergy << "/" << maxEnergy << "\n";
         std::cout << "Lab Level: " << labLevel << "/5\n";
-        std::cout << "Completed Research: Armor[" << (armorResearchDone ? "X" : " ") << "] Damage[" << (damageResearchDone ? "X" : " ")
-            << "] Speed[" << (speedResearchDone ? "X" : " ") << "]\n";
+        std::cout << "Completed Research: Armor[" << (armorResearchDone ? "X" : " ") << "] Damage[" << (damageResearchDone ? "X" : " ") << "] Speed[" << (speedResearchDone ? "X" : " ") << "]\n";
         std::cout << "Active Research (" << research.size() << "):\n";
         for (const auto& r : research) {
             std::cout << "  - " << r.name << " (" << r.turnsLeft << " turns left)\n";
@@ -466,20 +484,14 @@ public:
         std::cout << "Units (" << field->size() << "):\n";
         for (std::size_t i = 0; i < field->size(); ++i) {
             Unit* u = field->getUnit(i);
-            std::cout << "  - ID:" << u->getId() << " " << u->getType()
-                << " HP:" << u->getHealth().getValue() << "/" << u->getHealth().getMaxValue()
-                << " ARM:" << u->getArmor()
-                << " ATK:" << u->getAttack()
-                << " MOVES:" << u->getMovesLeft() << "/" << u->getSpeed()
-                << " ORDER:[" << u->getOrder() << "]"
-                << " (" << u->getX() << "," << u->getY() << ")\n";
+            std::cout << "  - ID:" << u->getId() << " " << u->getType() << " HP:" << u->getHealth().getValue() << "/" << u->getHealth().getMaxValue()
+                << " ARM:" << u->getArmor() << " ATK:" << u->getAttack() << " MOVES:" << u->getMovesLeft() << "/" << u->getSpeed()
+                << " ORDER:[" << u->getOrder() << "] (" << u->getX() << "," << u->getY() << ")\n";
         }
         std::cout << "Buildings (" << buildings.size() << "):\n";
         for (auto& b : buildings) {
-            std::cout << "  - " << b.getTypeName() << " (ID:" << b.id << ")"
-                << " HP:" << b.hp << "/" << b.maxHp
-                << " at (" << b.x << "," << b.y << ") "
-                << (b.isBuilt ? "[BUILT]" : "[BUILDING: " + std::to_string(b.buildTimeLeft) + " turns left]") << "\n";
+            std::cout << "  - " << b.getTypeName() << " (ID:" << b.id << ") HP:" << b.hp << "/" << b.maxHp
+                << " at (" << b.x << "," << b.y << ") " << (b.isBuilt ? "[BUILT]" : "[BUILDING: " + std::to_string(b.buildTimeLeft) + " turns left]") << "\n";
         }
         std::cout << "==============================\n";
     }

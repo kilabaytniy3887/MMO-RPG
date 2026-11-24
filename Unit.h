@@ -1,7 +1,9 @@
 #pragma once
 #include <string>
+#include <sstream>
 #include "Attributes.h"
 #include "Observer.h"
+#include "Logger.h"
 
 class Base;
 
@@ -19,6 +21,7 @@ protected:
     int movesLeft;
     std::string currentOrder;
     Base* ownerBase;
+    LoggingProxy* logger = nullptr;
 
 public:
     Unit(int id, int x, int y, int hp, int arm, int atk)
@@ -28,6 +31,8 @@ public:
     }
 
     virtual ~Unit() = default;
+
+    void setLogger(LoggingProxy* log) { logger = log; }
 
     int getId() const { return id; }
     int getX() const { return x; }
@@ -56,14 +61,18 @@ public:
     int getDamageMultiplier() const { return dmgMult; }
     void setDamageMultiplier(int mult) { dmgMult = mult; }
 
-    void move(int newX, int newY) { x = newX; y = newY; }
+    void move(int newX, int newY) {
+        x = newX; y = newY;
+        if (logger) {
+            std::stringstream ss;
+            ss << "Unit " << getType() << " (ID=" << id << ") moved to (" << x << "," << y << ")";
+            logger->log("INFO", "UNIT", ss.str());
+        }
+    }
 
     void buffArmor(int amount) { armor.increase(amount); }
     void buffDamage(int amount) { attack.increase(amount); }
-    void buffSpeed(int amount) {
-        speed += amount;
-        movesLeft += amount;
-    }
+    void buffSpeed(int amount) { speed += amount; movesLeft += amount; }
     void buffHealth(int amount) { health.increaseMax(amount); }
 
     void takeDamage(int dmg, double defenseMultiplier = 1.0) {
@@ -72,8 +81,20 @@ public:
         if (finalDmg < 0) finalDmg = 0;
 
         health.decrease(finalDmg);
+
+        if (logger) {
+            std::stringstream ss;
+            ss << "Unit " << getType() << " (ID=" << id << ") takes " << finalDmg << " damage, health: " << health.getValue() << "/" << health.getMaxValue();
+            logger->log("INFO", "COMBAT", ss.str());
+        }
+
         notify({ EventType::Damaged, id, "Unit damaged" });
         if (health.isZero()) {
+            if (logger) {
+                std::stringstream ss;
+                ss << "Unit " << getType() << " (ID=" << id << ") destroyed!";
+                logger->log("ALERT", "COMBAT", ss.str());
+            }
             notify({ EventType::Destroyed, id, "Unit destroyed" });
         }
     }
@@ -82,12 +103,22 @@ public:
 
     int attackUnit(Unit& target, double defenseMultiplier = 1.0) {
         int rawDamage = getAttack();
+        if (logger) {
+            std::stringstream ss;
+            ss << *this << " attacks " << target;
+            logger->log("INFO", "UNIT", ss.str());
+        }
         target.takeDamage(rawDamage, defenseMultiplier);
         return rawDamage;
     }
 
     virtual std::string getType() const = 0;
     virtual Unit* clone() const = 0;
+
+    friend std::ostream& operator<<(std::ostream& os, const Unit& u) {
+        os << "Unit[ID:" << u.getId() << " Type:" << u.getType() << " HP:" << u.getHealth().getValue() << "]";
+        return os;
+    }
 };
 
 class Damage : public Unit {

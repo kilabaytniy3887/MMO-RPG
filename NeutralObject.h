@@ -1,11 +1,11 @@
 #pragma once
 #include "Unit.h"
 #include "Base.h"
+#include "Logger.h"
 #include <iostream>
 #include <memory>
 #include <cmath>
 #include <utility>
-
 
 class IInteractionStrategy {
 public:
@@ -15,9 +15,7 @@ public:
 
 class HealthRestoreStrategy : public IInteractionStrategy {
 public:
-    void apply(Unit& unit) override {
-        unit.getHealth().healToMax();
-    }
+    void apply(Unit& unit) override { unit.getHealth().healToMax(); }
 };
 
 class AttackBoostStrategy : public IInteractionStrategy {
@@ -25,9 +23,7 @@ private:
     int boost;
 public:
     explicit AttackBoostStrategy(int b = 15) : boost(b) {}
-    void apply(Unit& unit) override {
-        unit.setTempDamageBoost(boost);
-    }
+    void apply(Unit& unit) override { unit.setTempDamageBoost(boost); }
 };
 
 class DamageStrategy : public IInteractionStrategy {
@@ -50,9 +46,7 @@ private:
     int amount;
 public:
     explicit GoldRewardStrategy(int a = 200) : amount(a) {}
-    void apply(Unit& unit) override {
-        unit.addGold(amount);
-    }
+    void apply(Unit& unit) override { unit.addGold(amount); }
 };
 
 class NoOpStrategy : public IInteractionStrategy {
@@ -60,36 +54,42 @@ public:
     void apply(Unit&) override {}
 };
 
-
 class NeutralObject {
 protected:
     std::shared_ptr<IInteractionStrategy> strategy;
+    LoggingProxy* logger = nullptr;
 
 public:
-    explicit NeutralObject(std::shared_ptr<IInteractionStrategy> strat)
-        : strategy(std::move(strat)) {
-    }
-
+    explicit NeutralObject(std::shared_ptr<IInteractionStrategy> strat) : strategy(std::move(strat)) {}
     virtual ~NeutralObject() = default;
 
+    void setLogger(LoggingProxy* log) { logger = log; }
+
     virtual void interact(Unit& unit) {
+        if (logger) {
+            std::stringstream ss;
+            ss << *this << " activated by Unit (ID=" << unit.getId() << ")";
+            logger->log("INFO", "ENV", ss.str());
+        }
         if (strategy) strategy->apply(unit);
     }
 
     virtual char getSymbol() const { return ' '; }
     virtual int getColor() const { return 7; }
-};
 
+    friend std::ostream& operator<<(std::ostream& os, const NeutralObject& obj) {
+        os << "NeutralObject[Symbol:" << obj.getSymbol() << "]";
+        return os;
+    }
+};
 
 class Altar : public NeutralObject {
 public:
     Altar() : NeutralObject(std::make_shared<AttackBoostStrategy>(15)) {}
-
     void interact(Unit& unit) override {
         std::cout << "Altar: You feel a surge of power!\n";
         NeutralObject::interact(unit);
     }
-
     char getSymbol() const override { return 'I'; }
     int getColor() const override { return 13; }
 };
@@ -97,12 +97,10 @@ public:
 class EnergySource : public NeutralObject {
 public:
     EnergySource() : NeutralObject(std::make_shared<HealthRestoreStrategy>()) {}
-
     void interact(Unit& unit) override {
         std::cout << "Fountain: Unit fully healed!\n";
         NeutralObject::interact(unit);
     }
-
     char getSymbol() const override { return 'I'; }
     int getColor() const override { return 12; }
 };
@@ -110,40 +108,33 @@ public:
 class Trap : public NeutralObject {
 public:
     Trap() : NeutralObject(std::make_shared<DamageStrategy>()) {}
-
     void interact(Unit& unit) override {
         std::cout << "Trap: Unit lost half of its health!\n";
         NeutralObject::interact(unit);
     }
-
     char getSymbol() const override { return ' '; }
 };
 
 class TreasureChest : public NeutralObject {
 public:
     TreasureChest() : NeutralObject(std::make_shared<GoldRewardStrategy>(200)) {}
-
     void interact(Unit& unit) override {
         std::cout << "Chest: Unit found 200 gold!\n";
         NeutralObject::interact(unit);
     }
-
     char getSymbol() const override { return ' '; }
 };
 
 class Castle : public NeutralObject {
 public:
     Castle() : NeutralObject(std::make_shared<NoOpStrategy>()) {}
-
     void interact(Unit& unit) override {
         std::cout << "Castle: This is your base.\n";
         NeutralObject::interact(unit);
     }
-
     char getSymbol() const override { return 'B'; }
     int getColor() const override { return 9; }
 };
-
 
 inline void operator+(Unit& unit, TreasureChest& chest) { chest.interact(unit); }
 inline void operator-(Unit& unit, Trap& trap) { trap.interact(unit); }

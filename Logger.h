@@ -27,7 +27,6 @@ struct LogEvent {
     }
 };
 
-// --- Adapter Pattern: Formatters ---
 class ILogFormatter {
 public:
     virtual ~ILogFormatter() = default;
@@ -75,7 +74,7 @@ public:
     }
 };
 
-// --- Loggers ---
+
 class ILogger {
 public:
     virtual ~ILogger() = default;
@@ -126,7 +125,6 @@ public:
     void setFormatter(std::shared_ptr<ILogFormatter> fmt) override { formatter = fmt; }
 };
 
-// --- Proxy Pattern ---
 class LoggingProxy {
 private:
     std::unique_ptr<ILogger> currentLogger;

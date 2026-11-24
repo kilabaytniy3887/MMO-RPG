@@ -120,7 +120,7 @@ void runFreePlay() {
         std::cout << "2. Base Management\n";
         std::cout << "3. View Game State\n";
         std::cout << "4. End Turn (Next Turn)\n";
-        std::cout << "5. Logging Settings\n"; // Новый пункт меню
+        std::cout << "5. Logging Settings\n";
         std::cout << "0. Exit to main menu\nChoice: ";
 
         if (!(std::cin >> mainChoice)) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
